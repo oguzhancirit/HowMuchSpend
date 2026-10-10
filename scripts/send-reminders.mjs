@@ -2,7 +2,9 @@
 const origin=process.env.SITE_ORIGIN;
 if(origin!=='https://howmuchspend.ozicirit9.chatgpt.site')throw new Error('Unexpected Site');
 const config=await fetch(origin+'/api/push/config');
-if(!config.ok||!(await config.json()).ready)throw new Error('Push server not ready');
+const configBody=await config.text();let parsed;try{parsed=JSON.parse(configBody)}catch{}
+console.log(JSON.stringify({configurationStatus:config.status,contentType:config.headers.get('content-type'),ready:parsed?.ready}));
+if(!config.ok||!parsed?.ready)throw new Error('Push server not ready ('+config.status+'): '+configBody.slice(0,300));
 const oidcURL=new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);oidcURL.searchParams.set('audience',origin);
 const tokenResponse=await fetch(oidcURL,{headers:{Authorization:'Bearer '+process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}});
 if(!tokenResponse.ok)throw new Error('OIDC request failed');
