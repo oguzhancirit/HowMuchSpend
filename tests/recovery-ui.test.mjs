@@ -14,7 +14,7 @@ function fixture(){
  const page=()=>vm.runInContext('controller.page()',ctx);
  const click=(action,props={})=>listeners.click({target:{closest:()=>({dataset:{recoveryAction:action,...props},disabled:false})}});
  const submit=(id,fields)=>{const form={id,fields};nodes.set(id,form);listeners.submit({target:form,preventDefault(){}})};
- return {page,click,submit,storage,nodes,ctx};
+ return {page,click,submit,storage,nodes,ctx,listeners};
 }
 test('Wizard classifies minimum separately, saves cost history, builds budget and plan without modifying existing ledger',()=>{
  const f=fixture();assert.match(f.page(),/İlk kartını ekle/);f.click('add');assert.match(f.page(),/Borcu netleştirelim/);
@@ -32,4 +32,13 @@ test('Minimum amount alone cannot create a payoff claim, and blank cost/rate can
 });
 test('Fictional worked example is labeled and never saved as actual debt',()=>{
  const f=fixture();f.click('example');assert.match(f.page(),/Kurgusal örnek/);assert.match(f.page(),/yaklaşık 3 ayda/);assert.equal(f.storage.has('howmuchspend.recovery.v1'),false);f.click('example-close');assert.match(f.page(),/İlk kartını ekle/);
+});
+test('Payment slider previews formatted TL and requires Calculate before committing a scenario',()=>{
+ const f=fixture();f.click('example');assert.match(f.page(),/recovery-range/);const before=f.page();const input={id:'recovery-range',value:'2500000',setAttribute(){}};
+ f.nodes.set('recovery-target',{value:'27.000'});f.listeners.input({target:input});assert.equal(f.nodes.get('recovery-target').value,'25.000');assert.equal(f.page(),before);assert.equal(f.storage.has('howmuchspend.recovery.v1'),false);
+ f.click('target');assert.match(f.page(),/25\.000 TL/);assert.equal(f.storage.has('howmuchspend.recovery.v1'),false);
+});
+test('Navigation snapshots draft fields without persisting financial records',()=>{
+ const f=fixture();f.click('add');f.nodes.set('recovery-card-form',{id:'recovery-card-form',fields:{name:'Yeni kart taslağı',balance:'64.500'}});
+ vm.runInContext('controller.captureDraft()',f.ctx);assert.match(f.page(),/Yeni kart taslağı/);assert.match(f.page(),/64.500/);assert.equal(f.storage.has('howmuchspend.recovery.v1'),false);assert.equal(f.storage.get('howmuchspend.data.v1'),'DO_NOT_TOUCH');
 });

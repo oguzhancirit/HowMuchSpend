@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createMotionController} from '../public/motion.js';
+
+function harness({reduced=false,mode='system',visible=true,animate=true}={}){
+  const calls=[],listeners={};
+  const node={dataset:{paid:'card@2026-10-10'},...(animate?{animate(frames,options){const a={cancelled:false,cancel(){this.cancelled=true},finished:new Promise(()=>{})};calls.push({frames,options,a});return a;}}:{})};
+  const media={matches:reduced,addEventListener:(event,fn)=>listeners[event]=fn};
+  const root={querySelectorAll:()=>[node]};
+  const controller=createMotionController({root,getMode:()=>mode,media,isVisible:()=>visible});
+  return {controller,calls,media,listeners};
+}
+test('Month motion follows direction and repeated background renders do not replay entrances',()=>{
+  const h=harness(),base={view:'calendar',month:'2026-10',selected:'2026-10-10',recovery:''};
+  h.controller.afterRender(base);assert.equal(h.calls.length,1);
+  h.controller.afterRender(base);assert.equal(h.calls.length,1);assert.equal(h.calls[0].a.cancelled,true);
+  h.controller.afterRender({...base,month:'2026-11'});assert.match(h.calls.at(-1).frames[0].transform,/16px/);
+  h.controller.afterRender({...base,month:'2026-09'});assert.match(h.calls.at(-1).frames[0].transform,/-16px/);
+});
+test('OS reduced motion, explicit reduction, hidden tabs and missing animation APIs remain functional',()=>{
+  for(const options of [{reduced:true},{mode:'reduced'},{visible:false},{animate:false}]){
+    const h=harness(options);assert.doesNotThrow(()=>h.controller.afterRender({view:'recovery',month:'2026-10'}));h.controller.paid('card@2026-10-10');assert.equal(h.calls.length,0);
+  }
+});
+test('Changing OS preference immediately cancels ongoing motion; payment feedback is key-specific',()=>{
+  const h=harness();h.controller.paid('other');assert.equal(h.calls.length,0);h.controller.paid('card@2026-10-10');assert.equal(h.calls.length,1);
+  h.media.matches=true;h.listeners.change();assert.equal(h.calls[0].a.cancelled,true);h.controller.paid('card@2026-10-10');assert.equal(h.calls.length,1);
+});

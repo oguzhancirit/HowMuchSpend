@@ -78,3 +78,20 @@ npm run validate
 Tests: eski verinin korunması, para birimleri, aylık tekrarlar, durum renkleri, RFC şifreleme vektörü, VAPID imzası, SSRF koruması, cihaz yetkileri, OIDC doğrulaması ve bildirim deduplikasyonu/yeniden deneme.
 
 Gerçek iPhone'a teslimat, cihaz sahibinin bildirim izni vermesi ve Test bildirimi ile doğrulanır.
+
+## UX/UI — 1.5.0 (10 October 2026)
+
+The refresh covers the calendar, transaction form, records, recovery planner and settings. The established palette, original calendar cell dimensions, income/expense summaries, bank artwork and central add button are retained. Space Grotesk is served locally and cached for offline use.
+
+| Reference reviewed | Observed pattern | Application here |
+| --- | --- | --- |
+| [Copilot design refresh](https://www.copilot.money/dispatch/liquid-glass), released 15 September 2025 | iOS 26 styling with light/dark modes | A restrained translucent mobile navigation surface and moving selection indicator, using the existing colors |
+| [Copilot dashboard guide](https://help.copilot.money/en/articles/6045480-dashboard-tab-overview), updated 14 April 2026 | Upcoming recurring items and direct transaction editing | Pending-only queue with clear due-date priority and a shortcut to all pending records |
+| [Monarch recurring calendar](https://www.monarch.com/track-recurring-bills-and-subscriptions) | Calendar/list views, payment confirmation and recognizable logos | Preserve the working calendar while making selected-day details and status controls easier to use |
+| [Monarch Pay Down Goals](https://help.monarch.com/hc/en-us/articles/44373293932052-Using-Pay-Down-Goals), updated 24 June 2026 | Separate payoff planning, comparison and budget linkage | Result-first recovery layout, expandable card management, and an affordable payment slider preview |
+| [YNAB payoff simulator](https://www.ynab.com/blog/ynab-loan-planner), updated 19 May 2025 | Experiment with payment amounts and compare time/cost | Preview a new monthly payment, then explicitly press Calculate; do not change the payment ledger |
+| [Apple motion guidelines](https://developer.apple.com/design/human-interface-guidelines/motion), [Material motion](https://m3.material.io/styles/motion), [MDN reduced motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Media_queries/Using_for_accessibility) | Motion follows an interaction; reduced-motion support | Brief directional month changes, form entrances, payment feedback and interruptible transitions |
+
+Records now group by date and expose paid/pending filters directly. The entry form combines amount and currency, offers date shortcuts and shows a formatted confirmation preview. Notification controls stay visible in Settings; setup explanations are expandable. A separate motion preference can reduce effects, and the OS reduced-motion preference always wins. No infinite decorative animations, extra runtime dependency or analytics service is added.
+
+Validation: 57 automated checks cover ledger retention, exact EUR/TRY amounts, composed filters, anchored repeat dates, reminder scheduling, recovery calculations, explicit slider confirmation, interrupted motion and reduced-motion fallbacks. The build artifact checks embedded application, motion and font assets. Physical iPhone and browser visual QA have not been performed in this environment because the supported browser controller is unavailable.
