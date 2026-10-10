@@ -1,9 +1,9 @@
 // Small, interruptible interactions. No timers, loops or dependency downloads.
 export function createMotionController({root,getMode=()=> 'system',media=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)'),isVisible=()=>true}) {
-  let previous=null;
+  let previous=null,rainUntil=null,rainHost=null;
   const active=new Set();
   const reduced=()=>getMode()==='reduced'||!!media?.matches;
-  const stop=()=>{for(const animation of active)animation.cancel();active.clear();};
+  const stop=()=>{for(const animation of active)animation.cancel();active.clear();rainHost?.remove();rainHost=null;};
   const play=(nodes,frames,duration=280,stagger=0)=>{
     if(reduced()||!isVisible())return;
     [...nodes].slice(0,8).forEach((node,i)=>{
@@ -12,8 +12,24 @@ export function createMotionController({root,getMode=()=> 'system',media=globalT
     });
   };
   const enter=[{opacity:.35,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}];
+  function openingRain(){
+    if(reduced()||!isVisible())return;
+    const card=root.querySelector?.('.summary-card.net'),doc=root.ownerDocument||globalThis.document;
+    if(!card?.append||!doc?.createElement)return;
+    const now=Date.now();if(rainUntil===null)rainUntil=now+2600;
+    const remaining=rainUntil-now;if(remaining<=0)return;
+    const host=doc.createElement('div');host.className='summary-net-rain';host.setAttribute('aria-hidden','true');card.append(host);rainHost=host;
+    const pending=[];
+    for(let i=0;i<14;i++){
+      const piece=doc.createElement('span');piece.textContent=i%2?'€':'$';piece.style.left=(3+i*7)+'%';piece.style.fontSize=(22+i%3*5)+'px';host.append(piece);
+      if(!piece.animate)continue;
+      const tilt=i%2?12:-14,drift=i%2?18:-22;
+      try{const a=piece.animate([{transform:`translate(0,-40px) rotate(${tilt}deg)`,opacity:0},{transform:`translate(${drift*.2}px,0) rotate(${tilt}deg)`,opacity:.18,offset:.18},{transform:`translate(${drift}px,190px) rotate(${tilt*-1}deg)`,opacity:0}],{duration:Math.min(1700+i%3*110,remaining),delay:Math.min(i*55,Math.max(0,remaining-1700)),easing:'cubic-bezier(.2,.45,.65,1)',fill:'both'});active.add(a);pending.push(Promise.resolve(a.finished).finally(()=>active.delete(a)));}catch{}
+    }
+    Promise.allSettled(pending).then(()=>{host.remove();if(rainHost===host)rainHost=null;});
+  }
   function afterRender(state){
-    stop();const before=previous;previous={...state};
+    stop();const before=previous;previous={...state};if(state.view==='calendar')openingRain();
     if(!before||state.view!==before.view){play(root.querySelectorAll('.page-head, .summary-grid, .workspace-grid, .record-list, .settings-panel, .savings-form, .savings-empty, .savings-grid, .tracking-overview, .tracking-balance, .tracking-form'),enter,300,22);return;}
     if(state.month!==before.month){const x=state.month>before.month?16:-16;play(root.querySelectorAll('.calendar-grid, .agenda-list, .record-list, .tracking-detail-grid, .tracking-overview'),[{opacity:.45,transform:`translateX(${x}px)`},{opacity:1,transform:'translateX(0)'}],240);return;}
     if(state.selected!==before.selected){play(root.querySelectorAll('#selected-day'),enter,200);return;}
