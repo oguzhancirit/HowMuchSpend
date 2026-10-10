@@ -1,4 +1,4 @@
-import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=22';
+import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=23';
 
 export const PAYMENT_KEY='howmuchspend.payments.v1';
 const MAX=1e12;

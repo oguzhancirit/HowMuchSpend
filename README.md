@@ -124,5 +124,5 @@ Hedef tutarı, para birimi, önceden birikmiş tutar, aylık güvenlik payı ve 
 ## Açılış efekti — v1.7.3
 İlk takvim gösteriminde yalnız planlanan aylık net kartında belirgin 💵/💶 emoji yağmuru oynar. 30–42 px emojiler çapraz düşüp farklı yönlere saçılır. Katman kartın içinde kırpılır, yazıların arkasında kalır, dokunmayı veya ekran okuyucuyu etkilemez. Bitişte temizlenir; yeniden çizimler aynı 2,6 saniyelik açılış penceresini uzatmaz. Hareketi Azalt ve görünmeyen sekmede oynatılmaz.
 
-## İki dilli aylar — v1.7.4
-Takvim başlığı ve ödeme takibi seçicisi Türkçe ay ile parantez içinde tam İngilizcesini gösterir: Ekim (October). Ödeme takibi ay menüsünde, kayıt formunda ve aylık geçmiş tablosunda da eşleşme gösterilir. İngilizce küçük yazılır; dar alanlarda ikinci satıra geçer. Tarih anahtarları ve finansal veriler değişmez.
+## İki dilli aylar — v1.7.5
+Takvim başlığı ve ödeme takibi seçicisi Türkçe ay ile parantez içinde tam İngilizcesini gösterir: Ekim (October). Ödeme takibi ay menüsünde, kayıt formunda ve aylık geçmiş tablosunda da eşleşme gösterilir. Türkçe ve İngilizce aynı satırda kalır; İngilizce yazı dar alana göre küçülür. Aylık geçmiş tablosu dar telefonda kendi içinde yatay kaydırılabilir. Tarih anahtarları ve finansal veriler değişmez.
