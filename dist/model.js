@@ -1,4 +1,7 @@
 export const SCHEMA = 1;
+export const CURRENCIES = { TRY: 'TL', EUR: 'EUR', USD: 'USD' };
+export const formatAmount = (cents,currency='TRY') => new Intl.NumberFormat('tr-TR',{minimumFractionDigits:cents%100?2:0,maximumFractionDigits:cents%100?2:0}).format(cents/100)+' '+CURRENCIES[currency];
+export const inCurrency = (items,currency='TRY') => items.filter(e=>(e.currency||'TRY')===currency);
 export const BANKS = {
   ziraat: { name: 'Ziraat', emoji: '🌾', short: 'Z', color: '#ee655b' },
   yapikredi: { name: 'Yapı Kredi', emoji: '🔵', short: 'Y', color: '#568eff' },
@@ -66,7 +69,8 @@ export function occurrences(data,from,to) {
   }
   return result.sort((a,b)=>a.date.localeCompare(b.date)||a.type.localeCompare(b.type)||a.title.localeCompare(b.title,'tr'));
 }
-export function totals(list) {
+export function totals(list,currency='TRY') {
+  list=inCurrency(list,currency);
   const t={income:0,expense:0,received:0,paid:0,pendingIncome:0,pendingExpense:0,net:0,actualNet:0};
   for(const o of list) { t[o.type]+=o.amountCents; if(o.paid) t[o.type==='income'?'received':'paid']+=o.amountCents; }
   t.pendingIncome=t.income-t.received; t.pendingExpense=t.expense-t.paid; t.net=t.income-t.expense; t.actualNet=t.received-t.paid;
@@ -86,7 +90,7 @@ export function editOccurrence(data,occ,changes,scope) {
     e.overrides={};e.skips=[];return copy;
   }
   if(scope==='one') {
-    e.overrides[occ.date]={title:fields.title,amountCents:fields.amountCents,category:fields.category,bank:fields.bank,notes:fields.notes};
+    e.overrides[occ.date]={title:fields.title,amountCents:fields.amountCents,currency:fields.currency||occ.currency||'TRY',category:fields.category,bank:fields.bank,notes:fields.notes};
     e.paidDates=e.paidDates.filter(d=>d!==occ.date); if(paid)e.paidDates.push(occ.date);
     return copy;
   }
@@ -110,11 +114,13 @@ export function removeOccurrence(data,occ,scope) {
 const object=x=>x && typeof x==='object' && !Array.isArray(x);
 const assert=(condition,msg)=>{if(!condition)throw new Error(msg)};
 function textField(v,max,required=false) {assert(typeof v==='string' && v.length<=max && (!required||v.trim().length>0),'Metin alanı geçersiz.');return v;}
-function validateFields(e,type) {
+function validateFields(e,type,fallbackCurrency='TRY') {
+  const currency=e.currency===undefined?fallbackCurrency:e.currency;
+  assert(Object.hasOwn(CURRENCIES,currency),'Para birimi geçersiz.');
   assert(Number.isSafeInteger(e.amountCents)&&e.amountCents>0&&e.amountCents<=1e12,'Tutar geçersiz.');
   assert(Object.hasOwn(CATEGORIES,e.category)&&CATEGORIES[e.category].type===type,'Kategori geçersiz.');
   assert(e.bank===''||Object.hasOwn(BANKS,e.bank),'Banka geçersiz.');
-  return {title:textField(e.title,100,true),amountCents:e.amountCents,category:e.category,bank:e.bank,notes:textField(e.notes,1000)};
+  return {title:textField(e.title,100,true),amountCents:e.amountCents,currency,category:e.category,bank:e.bank,notes:textField(e.notes,1000)};
 }
 export function validateData(raw) {
   assert(object(raw)&&raw.schemaVersion===SCHEMA&&Array.isArray(raw.entries)&&raw.entries.length<=10000,'Geçerli bir HowMuchSpend yedeği seç.');
@@ -128,13 +134,13 @@ export function validateData(raw) {
     assert(e.anchorDay===undefined||(Number.isInteger(e.anchorDay)&&e.anchorDay>=1&&e.anchorDay<=31),'Tekrar günü geçersiz.');
     for(const key of ['skips','paidDates'])assert(Array.isArray(e[key])&&e[key].length<=20000&&e[key].every(validDate),'Ödeme tarihleri geçersiz.');
     assert(object(e.overrides)&&Object.keys(e.overrides).length<=20000,'Özel kayıtlar geçersiz.');
-    const overrides={};for(const [date,o]of Object.entries(e.overrides)){assert(validDate(date)&&object(o),'Özel tarih geçersiz.');overrides[date]=validateFields(o,e.type);}
+    const overrides={};for(const [date,o]of Object.entries(e.overrides)){assert(validDate(date)&&object(o),'Özel tarih geçersiz.');overrides[date]=validateFields(o,e.type,e.currency||'TRY');}
     return {id:e.id,type:e.type,...validateFields(e,e.type),startDate:e.startDate,endDate:e.endDate||null,recurrence:e.recurrence,count:e.count,...(e.anchorDay!==undefined?{anchorDay:e.anchorDay}:{}),skips:[...new Set(e.skips)],paidDates:[...new Set(e.paidDates)],overrides};
   });
   return {schemaVersion:SCHEMA,entries,updatedAt:typeof raw.updatedAt==='string'?raw.updatedAt:null};
 }
 export function demoData(month) {
-  const d=blank(), add=(title,amount,day,type,category,bank='',paid=false,repeat='monthly')=>d.entries.push({id:id(),title,amountCents:amount*100,type,category,bank,notes:'Örnek kayıt',startDate:month+'-'+String(day).padStart(2,'0'),recurrence:repeat,endDate:null,count:null,paidDates:paid?[month+'-'+String(day).padStart(2,'0')]:[],overrides:{},skips:[]});
+  const d=blank(), add=(title,amount,day,type,category,bank='',paid=false,repeat='monthly')=>d.entries.push({id:id(),title,amountCents:amount*100,currency:'TRY',type,category,bank,notes:'Örnek kayıt',startDate:month+'-'+String(day).padStart(2,'0'),recurrence:repeat,endDate:null,count:null,paidDates:paid?[month+'-'+String(day).padStart(2,'0')]:[],overrides:{},skips:[]});
   add('Maaş',48000,1,'income','salary','',true);
   add('Akbank kart ödemesi',6400,5,'expense','card','akbank',true);
   add('Kahve molası',180,8,'expense','food','',true,'none');

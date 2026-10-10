@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { blank,parseAmount,occurrences,totals,setPaid,editOccurrence,removeOccurrence,validateData,shiftMonth,validDate } from '../dist/model.js';
-const entry=(overrides={})=>({id:'test-entry',type:'expense',title:'Test',amountCents:10001,category:'card',bank:'akbank',notes:'',startDate:'2026-01-31',recurrence:'monthly',count:null,endDate:null,paidDates:[],skips:[],overrides:{},...overrides});
+import { blank,formatAmount,inCurrency,parseAmount,occurrences,totals,setPaid,editOccurrence,removeOccurrence,validateData,shiftMonth,validDate } from '../dist/model.js';
+const entry=(overrides={})=>({id:'test-entry',type:'expense',title:'Test',amountCents:10001,currency:'TRY',category:'card',bank:'akbank',notes:'',startDate:'2026-01-31',recurrence:'monthly',count:null,endDate:null,paidDates:[],skips:[],overrides:{},...overrides});
 const db=(...entries)=>({...blank(),entries});
 const at=(data,date)=>occurrences(data,date,date)[0];
 test('Turkish amounts use integer kuruş and reject malformed inputs',()=>{
@@ -46,7 +46,7 @@ test('Imports reject negative amounts, bad dates, duplicate IDs, prototype keys 
   const extra={...db(entry()),password:'must not persist'};assert.equal(validateData(extra).password,undefined);
 });
 test('Validation round trip retains overrides, skips and cents',()=>{
-  const data=db(entry({overrides:{'2026-02-28':{title:'Adjusted',amountCents:32001,category:'card',bank:'ziraat',notes:'Test'}},skips:['2026-03-31']}));assert.deepEqual(validateData(JSON.parse(JSON.stringify(data))),data);
+  const data=db(entry({overrides:{'2026-02-28':{title:'Adjusted',amountCents:32001,currency:'TRY',category:'card',bank:'ziraat',notes:'Test'}},skips:['2026-03-31']}));assert.deepEqual(validateData(JSON.parse(JSON.stringify(data))),data);
 });
 test('Date boundaries and month navigation are correct',()=>{
   assert.equal(shiftMonth('2026-12',1),'2027-01');assert.equal(shiftMonth('2026-01',-1),'2025-12');assert.equal(validDate('2024-02-29'),true);assert.equal(validDate('2026-02-29'),false);assert.equal(validDate('2026-00-10'),false);
@@ -54,4 +54,26 @@ test('Date boundaries and month navigation are correct',()=>{
 test('Future edit in a short month preserves original day and prepaid future statuses',()=>{
   const data=db(entry({paidDates:['2026-03-31']})),feb=at(data,'2026-02-28');const changed=editOccurrence(data,feb,{...entry(),startDate:'2026-02-28',amountCents:22000,paid:false},'future');
   assert.equal(at(changed,'2026-03-31').amountCents,22000);assert.equal(at(changed,'2026-03-31').paid,true);assert.equal(at(changed,'2026-03-28'),undefined);assert.equal(at(validateData(changed),'2026-04-30').amountCents,22000);
+});
+
+test('Whole amounts have full Turkish grouping and explicit currency',()=>{
+ assert.equal(formatAmount(100000),'1.000 TL');
+ assert.equal(formatAmount(45900000),'459.000 TL');
+ assert.equal(formatAmount(125050,'EUR'),'1.250,50 EUR');
+ assert.equal(formatAmount(100000,'USD'),'1.000 USD');
+});
+test('Legacy installed-app data keeps IDs, statuses, schedules and overrides',()=>{
+ const legacy=entry({paidDates:['2026-01-31'],skips:['2026-03-31'],overrides:{'2026-02-28':{title:'Legacy',amountCents:25000,category:'card',bank:'akbank',notes:''}}});delete legacy.currency;
+ const migrated=validateData(db(legacy));
+ assert.equal(migrated.entries[0].id,legacy.id);assert.equal(migrated.entries[0].currency,'TRY');assert.equal(at(migrated,'2026-01-31').paid,true);assert.equal(at(migrated,'2026-02-28').amountCents,25000);assert.equal(at(migrated,'2026-02-28').currency,'TRY');assert.equal(at(migrated,'2026-03-31'),undefined);
+});
+test('Currency totals never sum unlike currencies',()=>{
+ const items=occurrences(db(entry({amountCents:100000}),entry({id:'eur',currency:'EUR',amountCents:25000}),entry({id:'usd',currency:'USD',amountCents:90000})),'2026-01-01','2026-01-31');
+ assert.equal(totals(items).expense,100000);assert.equal(totals(items,'EUR').expense,25000);assert.equal(totals(items,'USD').expense,90000);assert.equal(inCurrency(items,'EUR').length,1);
+});
+test('Currency changes apply only to selected occurrence and survive backup',()=>{
+ const source=db(entry());const updated=validateData(editOccurrence(source,at(source,'2026-02-28'),{...entry(),currency:'EUR',paid:false},'one'));
+ assert.equal(at(updated,'2026-01-31').currency,'TRY');assert.equal(at(updated,'2026-02-28').currency,'EUR');assert.equal(at(updated,'2026-03-31').currency,'TRY');
+ assert.throws(()=>validateData(db(entry({currency:'GBP'}))));
+ const euro=db(entry({currency:'EUR',overrides:{'2026-02-28':{title:'Legacy override',amountCents:30000,category:'card',bank:'akbank',notes:''}}}));assert.equal(at(validateData(euro),'2026-02-28').currency,'EUR');
 });

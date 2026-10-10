@@ -4,12 +4,13 @@ Gelirin, giderin ve ödeme günlerin. Hepsi tek bir takvimde.
 
 iPhone için tasarlanmış, Türkçe, ücretsiz ve bağımlılıksız bir gelir/gider takip web uygulaması. Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 
-## 1.1 güncellemesi
+## 1.2 düzeltmesi
 
-- Takvim odaklı kompakt ana ekran; global ekleme düğmesi yerine güne dokunarak ekleme.
-- Ana takvim ve ana liste yalnızca bekleyen kayıtları gösterir. Günlük özet tamamlanan kayıtları da içerir.
-- Flow: gelir kaynakları → toplam → giderler ve kalan; gider geliri aşarsa plan açığı ayrı gösterilir.
-- Yerel Space Grotesk değişken fontu ve indigo/iris renk sistemi. Font lisansı `dist/fonts/OFL.txt` içindedir.
+- İlk sürümün yeşil/koyu renkleri, fontu, takvim ölçüleri, aylık özet kartları ve merkezi + ekleme akışı geri getirildi.
+- Banka görselleri korundu; takvimde küçük kategori emojileri, banka görselleri ve günlük tutarlar görünür.
+- TL, EUR ve USD kayıtları; `1.000 TL`, `459.000 TL`, `1.250,50 EUR` biçiminde tutarlar.
+- Üst menüdeki para birimi seçimi takvim, işlemler, analiz ve CSV için geçerlidir. Farklı para birimleri toplanmaz ve kur dönüşümü yapılmaz.
+- Eski kayıtlar TL kabul edilir; mevcut adres, PWA kimliği ve veri saklama anahtarları aynıdır. Tekrarlar, ödeme durumları ve özel düzenlemeler korunur.
 
 ## Özellikler
 
@@ -27,7 +28,7 @@ iPhone için tasarlanmış, Türkçe, ücretsiz ve bağımlılıksız bir gelir/
 
 ## Kullanım
 
-1. Takvimde bir güne dokun; günlük özetten giderini veya gelirini ekle.
+1. Takvimde bir günü seç; ortadaki + veya Yeni kayıt düğmesiyle gelir/gider ekle ve para birimini seç.
 2. Düzenli ödeme için `Her ay` seç. Taksit için bitişi `Belirli sayıda` yap.
 3. Gerçekleştiğinde sağdaki durum düğmesini kullan.
 4. Ayarlar bölümünden düzenli JSON yedeği indir.
@@ -52,6 +53,14 @@ Bu kaynak kod ve örnek veriler kullanıcıya ait ekran görüntülerini, banka 
 - Tekrarlar kopyalar oluşturmak yerine kurallardan hesaplanır. Gelecek aylara geçiş kayıtları çoğaltmaz.
 - Kredi kartı borcu gider olarak eklenirse aynı alışverişleri ayrıca eklemek toplamda çift sayım oluşturur.
 - Varsayılan kayıtlar boştur. Örnek görünüm kurgusaldır ve gerçek verileri değiştirmez.
+
+## Sonraki adım: iPhone bildirimleri
+
+Bu sürüm push bildirimi göndermez. iOS 16.4 ve sonrasında ana ekrana eklenen web uygulaması, kullanıcı uygulama içindeki bildirim düğmesine dokunduğunda izin isteyebilir. Uygulama kapalıyken ödeme öncesi hatırlatma için sunucu zamanlayıcısı, Web Push aboneliği ve servis çalışanında bildirim işleyicisi gerekir; tarayıcıdaki zamanlayıcı yeterli değildir.
+
+Mevcut ana ekran uygulaması aynı adres ve manifest kimliğiyle güncellenmelidir. İlk sunucu eşitlemesinden önce cihazdaki JSON yedeği korunmalı; mevcut kayıt kimlikleriyle ekleme/güncelleme yapılmalı, kayıtlar yeniden yaratılmamalıdır. Sunucu tarafı kişisel kayıtları ayrı kullanıcı kimliğiyle sınırlandırmalıdır. Bildirim zamanı ve kilit ekranında tutar gösterme tercihi uygulama içinden ayarlanmalıdır.
+
+Kaynaklar: https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/ ve https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers
 
 ## Yerelde çalıştırma
 
