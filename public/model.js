@@ -152,3 +152,5 @@ export function demoData(month) {
   add('Müzik aboneliği',100,27,'expense','subscription');
   return d;
 }
+
+export const englishMonth=m=>new Intl.DateTimeFormat('en-US',{month:'long'}).format(new Date(m+'-01T12:00:00'));

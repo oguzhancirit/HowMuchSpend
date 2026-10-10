@@ -51,9 +51,9 @@ test('Corrupt storage is retained for backup and cannot be overwritten by adding
 
 test('Turkish month selector replaces locale-dependent date input, navigates without writes and protects open debt drafts',()=>{
   const f=fixture(),before=JSON.stringify([...f.storage]);
-  assert.match(f.page(),/tracking-month-label/);assert.match(f.page(),/>Ekim<\/span>/);assert.doesNotMatch(f.page(),/type="month"|October/);
+  assert.match(f.page(),/tracking-month-label/);assert.match(f.page(),/>Ekim<\/span>/);assert.doesNotMatch(f.page(),/type="month"/);
   f.click('pick-month');assert.match(f.page(),/id="payment-month-picker"/);assert.match(f.page(),/Aralık/);
   f.submit('payment-month-picker',{pickerYear:'2027',pickerMonth:'12'});assert.match(f.page(),/>Aralık<\/span>/);assert.match(f.page(),/2027<\/span>/);assert.doesNotMatch(f.page(),/id="payment-month-picker"/);
   f.submit('payment-month-picker',{pickerYear:'2200',pickerMonth:'01'});assert.match(f.page(),/2027<\/span>/);assert.equal(JSON.stringify([...f.storage]),before);
-  f.setMonth('2026-10');f.add();f.click('statement');f.click('month',{value:'1'});assert.match(f.page(),/Ekim 2026 borç kaydı/);assert.match(f.page(),/aria-controls="payment-month-picker" disabled/);
+  f.setMonth('2026-10');f.add();f.click('statement');f.click('month',{value:'1'});assert.match(f.page(),/Ekim \(October\) 2026 borç kaydı/);assert.match(f.page(),/aria-controls="payment-month-picker" disabled/);
 });
