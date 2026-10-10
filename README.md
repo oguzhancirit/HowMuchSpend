@@ -4,6 +4,15 @@ Gelirin, giderin ve ödeme günlerin. Hepsi tek bir takvimde.
 
 iPhone için tasarlanmış, Türkçe, ücretsiz ve bağımlılıksız bir gelir/gider takip web uygulaması. Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 
+## 1.2.1 ana ekran güncellemesi
+
+- Uygulama açılışında, yeniden öne geldiğinde ve bağlantı geri geldiğinde sürüm kontrolü yapılır; aynı anda tek kontrol çalışır.
+- Servis çalışanı uygulama kodundan bağımsız yüklenir ve HTTP önbelleği kullanılmadan güncellenir.
+- Yeni sürümde otomatik yeniden yüklenir. Açık kayıt/onay penceresi varsa güncelleme kaydedilmemiş işlemi kesmez; üstte güncelleme düğmesi gösterilir.
+- Ayarlar içinden sürüm/adres görülebilir ve güncelleme elle kontrol edilebilir.
+- HTML çevrimiçiyken yeniden alınır; JS/CSS/model dosyaları aynı sürüm numarasıyla önbelleğe alınır. Yalnızca uygulama kabuğu önbelleği değişir; localStorage kayıtlarına dokunulmaz.
+- Eski 1.0 sürümünün bellekte açık kaldığı iPhone'da ilk geçiş için uygulama kartını uygulama değiştiriciden kapatıp aynı ikondan yeniden aç. İkonu veya Safari/site verilerini silmek gerekmez.
+
 ## 1.2 düzeltmesi
 
 - İlk sürümün yeşil/koyu renkleri, fontu, takvim ölçüleri, aylık özet kartları ve merkezi + ekleme akışı geri getirildi.
