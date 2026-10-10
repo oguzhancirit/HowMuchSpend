@@ -3,20 +3,21 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as Model from '../public/model.js';
+import * as Savings from '../public/savings-model.js';
 import * as Recovery from '../public/recovery-model.js';
 import * as Payments from '../public/payments-model.js';
 import {dayStatus} from '../public/calendar-status.js';
 import {createMotionController} from '../public/motion.js';
 
 const read=name=>fs.readFileSync(new URL('../public/'+name,import.meta.url),'utf8');
-const source=read('notifications.js').replace(/^export /gm,'')+'\nconst createRecoveryController=(()=>{'+read('recovery.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createRecoveryController;})();\nconst createPaymentsController=(()=>{'+read('payments.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createPaymentsController;})();\n'+read('app.js').replace(/^import .*\n/gm,'');
+const source=read('notifications.js').replace(/^export /gm,'')+'\nconst createRecoveryController=(()=>{'+read('recovery.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createRecoveryController;})();\nconst createPaymentsController=(()=>{'+read('payments.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createPaymentsController;})();\nconst createSavingsController=(()=>{'+read('savings.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createSavingsController;})();\n'+read('app.js').replace(/^import .*\n/gm,'');
 function fixture(){
   const nodes=new Map(),listeners={};
   const node=selector=>{if(!nodes.has(selector))nodes.set(selector,{value:'',innerHTML:'',textContent:'',hidden:false,checked:false,open:false,dataset:{},content:'',classList:{add(){},remove(){},toggle(){}},setAttribute(){},addEventListener(){},reset(){},showModal(){this.open=true;},close(){this.open=false;},focus(){},querySelectorAll:()=>[]});return nodes.get(selector);};
   const entry=(id,type,currency,amount,title,category)=>({id,type,currency,amountCents:amount,title,category,bank:category==='card'?'akbank':'',notes:'',startDate:'2026-01-31',recurrence:'monthly',count:null,endDate:null,paidDates:id==='card'?['2026-01-31']:[],skips:[],overrides:{}});
   const ledger={schemaVersion:1,updatedAt:null,entries:[entry('card','expense','TRY',45900000,'Akbank eski kayıt','card'),entry('salary','income','TRY',10000000,'Maaş','salary'),entry('euro','income','EUR',100000,'Euro gelir','salary')]};
   const storage=new Map([['howmuchspend.data.v1',JSON.stringify(ledger)]]),original=storage.get('howmuchspend.data.v1');
-  const context=vm.createContext({...Model,...Recovery,...Payments,dayStatus,createMotionController,URL,location:{hostname:'howmuchspend.ozicirit9.chatgpt.site',href:'https://howmuchspend.ozicirit9.chatgpt.site'},document:{querySelector:node,querySelectorAll:()=>[],getElementById:id=>nodes.get('#'+id),documentElement:{dataset:{}},addEventListener:(event,fn)=>(listeners[event]??=[]).push(fn)},window:{innerWidth:428,addEventListener(){},scrollTo(){}},navigator:{},Intl,Date,console,crypto:globalThis.crypto,structuredClone,setTimeout:()=>1,clearTimeout(){},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)}});
+  const context=vm.createContext({...Model,...Recovery,...Payments,...Savings,dayStatus,createMotionController,URL,location:{hostname:'howmuchspend.ozicirit9.chatgpt.site',href:'https://howmuchspend.ozicirit9.chatgpt.site'},document:{querySelector:node,querySelectorAll:()=>[],getElementById:id=>nodes.get('#'+id),documentElement:{dataset:{}},addEventListener:(event,fn)=>(listeners[event]??=[]).push(fn)},window:{innerWidth:428,addEventListener(){},scrollTo(){}},navigator:{},Intl,Date,console,crypto:globalThis.crypto,structuredClone,setTimeout:()=>1,clearTimeout(){},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)}});
   vm.runInContext(source,context);
   const run=code=>vm.runInContext(code,context);
   const click=dataset=>{const button={dataset,hasAttribute:()=>false};for(const fn of listeners.click||[])fn({target:{closest:selector=>selector==='button,a'?button:null}});};
@@ -47,4 +48,8 @@ test('Settings keep reminders visible and motion preference writes no ledger or 
   const f=fixture();f.run("view='settings';render()");assert.match(f.node('#main').innerHTML,/notification-panel/);assert.match(f.node('#main').innerHTML,/08:30 · 12:00 · 17:00/);assert.match(f.node('#main').innerHTML,/motion-mode/);
   for(const fn of f.listeners.change)fn({target:{id:'motion-mode',value:'reduced',closest:()=>null}});
   assert.equal(JSON.parse(f.storage.get('howmuchspend.preferences.v1')).motion,'reduced');assert.equal(f.storage.get('howmuchspend.data.v1'),f.original);assert.equal(f.storage.has('howmuchspend.push.v1'),false);
+});
+
+test('Para Biriktir replaces Kurtuluş with a compact single-row navigation while preserving data',()=>{
+ const f=fixture();f.run("view='savings';render()");assert.match(f.node('#main').innerHTML,/Hadi Para Biriktir/);assert.match(f.node('.bottom-nav').innerHTML,/data-view="savings"/);assert.doesNotMatch(f.node('.bottom-nav').innerHTML,/Kurtuluş|data-view="recovery"/);assert.equal(f.storage.get('howmuchspend.data.v1'),f.original);assert.equal(f.storage.has('howmuchspend.savings.v1'),false);
 });

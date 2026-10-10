@@ -14,11 +14,11 @@ export function createMotionController({root,getMode=()=> 'system',media=globalT
   const enter=[{opacity:.35,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}];
   function afterRender(state){
     stop();const before=previous;previous={...state};
-    if(!before||state.view!==before.view){play(root.querySelectorAll('.page-head, .summary-grid, .workspace-grid, .record-list, .settings-panel, .rescue-form, .rescue-empty, .rescue-plan, .rescue-manage, .tracking-overview, .tracking-balance, .tracking-form'),enter,300,22);return;}
+    if(!before||state.view!==before.view){play(root.querySelectorAll('.page-head, .summary-grid, .workspace-grid, .record-list, .settings-panel, .savings-form, .savings-empty, .savings-grid, .tracking-overview, .tracking-balance, .tracking-form'),enter,300,22);return;}
     if(state.month!==before.month){const x=state.month>before.month?16:-16;play(root.querySelectorAll('.calendar-grid, .agenda-list, .record-list, .tracking-detail-grid, .tracking-overview'),[{opacity:.45,transform:`translateX(${x}px)`},{opacity:1,transform:'translateX(0)'}],240);return;}
     if(state.selected!==before.selected){play(root.querySelectorAll('#selected-day'),enter,200);return;}
     if(state.payments!==before.payments){play(root.querySelectorAll('.tracking-balance, .tracking-form, .tracking-flow-panel'),enter,240);}
-    if(state.recovery!==before.recovery){play(root.querySelectorAll('.rescue-form, .rescue-outcome'),enter,240);play(root.querySelectorAll('.rescue-chart span'),[{transform:'scaleY(.15)'},{transform:'scaleY(1)'}],400,18);}
+    if(state.savings!==before.savings){play(root.querySelectorAll('.savings-form, .savings-outcome'),enter,240);}
   }
   function paid(key){play([...root.querySelectorAll('[data-paid]')].filter(n=>n.dataset.paid===key),[{transform:'scale(.85)'},{transform:'scale(1.12)'},{transform:'scale(1)'}],280);}
   media?.addEventListener?.('change',()=>{if(reduced())stop();});

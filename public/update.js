@@ -1,8 +1,8 @@
 /* Independent of app rendering, so a failed app module cannot block updates. */
 (() => {
-  const BUILD=17, VERSION='1.6.1';
+  const BUILD=18, VERSION='1.7.0';
   let checking=null,registration=null,newBuild=false,reloading=false,lastCheck=0;
-  const editing=()=>!!document.querySelector('dialog[open], [data-editing-recovery], [data-editing-payments], html[data-editing-payments-draft="true"]');
+  const editing=()=>!!document.querySelector('dialog[open], [data-editing-savings], html[data-editing-savings-draft="true"], [data-editing-payments], html[data-editing-payments-draft="true"]');
   const status=text=>{const node=document.getElementById('update-status');if(node)node.textContent=text;};
   function showUpdate(){
     let banner=document.getElementById('update-banner');

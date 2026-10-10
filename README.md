@@ -14,7 +14,7 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 
 ## Ödeme Takibi (v1.6.0)
 
-İşlemler sekmesinin yerini kart bazında aylık gerçek borç takibi alır. Alt menü: Takvim / Ödeme Takibi / + / Kurtuluş / Ayarlar. Takvimdeki bekleyenler aynı sayfada açılır; kayıtlar, ödeme durumları, banka görselleri ve hafta sonu gri hücreler korunur.
+İşlemler sekmesinin yerini kart bazında aylık gerçek borç takibi alır. Alt menü: Takvim / Ödeme Takibi / + / Para Biriktir / Ayarlar. Takvimdeki bekleyenler aynı sayfada açılır; kayıtlar, ödeme durumları, banka görselleri ve hafta sonu gri hücreler korunur.
 
 - Önce banka, kart adı ve para birimi seçilir. Takvimdeki banka/para birimi grupları yalnızca öneridir; kullanıcı kartı eklemeden takip verisi yazılmaz.
 - Aylık hesap: devreden borç + yeni harcama (o ay yansıyan taksitler dahil) + ekstredeki gerçek faiz/vergi/ücret − ödenen = kalan. İlk başlangıç açıkça girilir; sonraki kayıtlı ay önceki ayın kalanını otomatik kullanabilir. Eksik ay ve bilinmeyen ödeme kaynağı sıfır borç olarak kabul edilmez.
@@ -22,12 +22,12 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 - Takvim gerçek ödeme zamanını saklamadığından ödemeler kayıt ayına atanır. Kısmi/geç ödeme ve banka mutabakatı için o ayın gerçek ödenen toplamı elle girilebilir; bu, takvim toplamını **değiştirir**, üzerine eklenmez. Takvim kayıtlarını değiştirmez.
 - Tamamlandı/bekliyor değişikliği otomatik bağlı aylarda ve sonraki devreden tutarlarda yeniden hesaplanır. Manuel başlangıç yeni mutabakat noktasıdır. Fazla ödeme ayrı kart alacağı olarak saklanır ve sonraki otomatik ayda bir kez mahsup edilir.
 - Kart detayı: toplam / ödenen / geçen aydan gelen / kalan, artış-azalış tutarı, orantılı Flow akışı, isteğe bağlı yeni harcama kategorileri, son 12 ay veya tam geçmiş. Eksik geçmiş boş işaretlenir; ödeme tutarından toplam borç üretilmez.
-- `howmuchspend.payments.v1` yalnız cihazda saklanan ayrı doğrulanmış veri alanıdır. Takvim, Kurtuluş ve bildirim verileri korunur. Bu ekranın kendi JSON yedek/geri yüklemesi vardır; eski takvim yedeği bunları içermez. Finansal tutarlar sunucuya gönderilmez.
+- `howmuchspend.payments.v1` yalnız cihazda saklanan ayrı doğrulanmış veri alanıdır. Takvim, kumbara ve bildirim verileri korunur. Bu ekranın kendi JSON yedek/geri yüklemesi vardır; eski takvim yedeği bunları içermez. Finansal tutarlar sunucuya gönderilmez.
 - Aylık harcama ve masraflar kullanıcı tarafından girilen gerçek ekstre kayıtlarıdır; faiz hesaplanmaz ve ödeme tavsiyesi verilmez. Borç değişimi önceki kayıtlı ayın kalanı veya ilk ayın başlangıcı ile karşılaştırılır.
 
 Validation: accounting/carry/credit/currency/deduplication tests and VM UI flows cover adding cards, monthly statements, historical tracking, privacy, drafts, import validation and unchanged existing storage. Browser and physical iPhone visual QA were unavailable in the managed environment.
 
-## Kurtuluş
+## Eski Kurtuluş (arşiv)
 
 Analiz sekmesi yerine kişisel kredi kartı borcu kapatma planı. TL bazında, cihaz içinde çalışır; plan/ekstreler sunucuya gönderilmez.
 
@@ -110,3 +110,11 @@ The refresh covers the calendar, transaction form, records, recovery planner and
 Records now group by date and expose paid/pending filters directly. The entry form combines amount and currency, offers date shortcuts and shows a formatted confirmation preview. Notification controls stay visible in Settings; setup explanations are expandable. A separate motion preference can reduce effects, and the OS reduced-motion preference always wins. No infinite decorative animations, extra runtime dependency or analytics service is added.
 
 Validation: 57 automated checks cover ledger retention, exact EUR/TRY amounts, composed filters, anchored repeat dates, reminder scheduling, recovery calculations, explicit slider confirmation, interrupted motion and reduced-motion fallbacks. The build artifact checks embedded application, motion and font assets. Physical iPhone and browser visual QA have not been performed in this environment because the supported browser controller is unavailable.
+
+
+## Para Biriktir — v1.7.0
+Kurtuluş sayfasının yerine Hadi Para Biriktir hedef oluşturma akışı gelir. Saydam pembe SVG domuz kumbara gerçek ilerlemeyi veya seçilen ayın simülasyonunu gösterir. Aylık tablo ve ay kaydırıcısı tahmini birikimi değiştirir; Hareketi Azalt tercihi animasyonları durdurur.
+
+Hedef tutarı, TRY/EUR/USD, başlangıç birikimi, aylık güvenlik payı, kalan bütçeden ayrılacak yüzde ve isteğe bağlı hedef ayı sorulur. Tarihsiz hedef 12–120 ay simüle edilebilir. Her ayın planlanan geliri eksi gideri eksi güvenlik payı eksi o ayın gerçek birikim kayıtları kullanılabilir kapasitedir. Varsayılan öneri bunun %20’sidir; tarihli hedefte kalan hedef, aylara kapasiteleri oranında paylaştırılır. Öneri kapasiteyi ve kalan hedefi aşmaz. Eksik kapasite açık gösterilir. Para birimleri birleştirilmez; yatırım getirisi, faiz veya kur tahmini yapılmaz.
+
+`howmuchspend.savings.v1` cihazda ayrı saklanır. Gerçek birikimler kullanıcının ayrıca girdiği pozitif kayıtlar ve başlangıç tutarıdır. Simülasyon bunları değiştirmez, banka bağlantısı/transferi yapmaz. Kendi JSON yedek/geri yüklemesi vardır. Gelecek aya gerçek birikim kaydı girilemez. Takvim, ödeme takibi, eski Kurtuluş verileri ve bildirim ayarları silinmez. Eski Kurtuluş modülleri geçmiş verilerle uyumluluk için kaynakta arşiv olarak tutulur; uygulamada aktif rota değildir.
