@@ -20,11 +20,12 @@ export function createMotionController({root,getMode=()=> 'system',media=globalT
     const remaining=rainUntil-now;if(remaining<=0)return;
     const host=doc.createElement('div');host.className='summary-net-rain';host.setAttribute('aria-hidden','true');card.append(host);rainHost=host;
     const pending=[];
-    for(let i=0;i<14;i++){
-      const piece=doc.createElement('span');piece.textContent=i%2?'€':'$';piece.style.left=(3+i*7)+'%';piece.style.fontSize=(22+i%3*5)+'px';host.append(piece);
+    const fall=(card.clientHeight||160)+80;
+    for(let i=0;i<24;i++){
+      const piece=doc.createElement('span');piece.textContent=i%2?'💶':'💵';piece.style.left=(5+(i*37)%88)+'%';piece.style.fontSize=(30+i%4*4)+'px';host.append(piece);
       if(!piece.animate)continue;
-      const tilt=i%2?12:-14,drift=i%2?18:-22;
-      try{const a=piece.animate([{transform:`translate(0,-40px) rotate(${tilt}deg)`,opacity:0},{transform:`translate(${drift*.2}px,0) rotate(${tilt}deg)`,opacity:.18,offset:.18},{transform:`translate(${drift}px,190px) rotate(${tilt*-1}deg)`,opacity:0}],{duration:Math.min(1700+i%3*110,remaining),delay:Math.min(i*55,Math.max(0,remaining-1700)),easing:'cubic-bezier(.2,.45,.65,1)',fill:'both'});active.add(a);pending.push(Promise.resolve(a.finished).finally(()=>active.delete(a)));}catch{}
+      const tilt=i%2?22:-24,drift=(i%2?1:-1)*(45+i%5*18),delay=Math.min(i%6*115+Math.floor(i/6)*65,Math.max(0,remaining-800));
+      try{const a=piece.animate([{transform:`translate(${-drift*.3}px,-65px) rotate(${tilt}deg) scale(.9)`,opacity:0},{transform:`translate(0,5px) rotate(${tilt*.5}deg) scale(1)`,opacity:.88,offset:.16},{transform:`translate(${drift*.55}px,${fall*.48}px) rotate(${-tilt*.5}deg) scale(1)`,opacity:.8,offset:.55},{transform:`translate(${drift}px,${fall}px) rotate(${-tilt}deg) scale(.95)`,opacity:0}],{duration:Math.min(1850+i%3*90,remaining-delay),delay,easing:'cubic-bezier(.15,.35,.6,1)',fill:'both'});active.add(a);pending.push(Promise.resolve(a.finished).finally(()=>active.delete(a)));}catch{}
     }
     Promise.allSettled(pending).then(()=>{host.remove();if(rainHost===host)rainHost=null;});
   }

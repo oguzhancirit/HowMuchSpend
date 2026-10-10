@@ -121,5 +121,5 @@ Hedef tutarı, para birimi, önceden birikmiş tutar, aylık güvenlik payı ve 
 
 “Kumbarayı sıfırladım :(” onayından sonra mevcut bakiye kadar sıfırlama kaydı eklenir. Hedef ve eski katkılar korunur; geçmiş giderler geri alınmaz. Yeni katkı sıfır bakiyeden birikmeye başlar. Yanlış girilmiş katkının kaldırılması ilgili gideri de kaldırır; geçmiş sıfırlamaları negatif bakiye yapacak bir silmeye izin verilmez. Bildirim, kart takibi ve banka kayıtları korunur. Banka transferi yapılmaz; kullanıcı gerçekleşmiş aktarımı işaretler. Sistem Hareketi Azalt ayarına uyar.
 
-## Açılış efekti — v1.7.2
-İlk takvim gösteriminde yalnız planlanan aylık net kartında kısa dolar/euro yağmuru oynar. Katman kartın içinde kırpılır, yazıların arkasında kalır, dokunmayı veya ekran okuyucuyu etkilemez. Bitişte temizlenir; yeniden çizimler aynı 2,6 saniyelik açılış penceresini uzatmaz. Hareketi Azalt ve görünmeyen sekmede oynatılmaz.
+## Açılış efekti — v1.7.3
+İlk takvim gösteriminde yalnız planlanan aylık net kartında belirgin 💵/💶 emoji yağmuru oynar. 30–42 px emojiler çapraz düşüp farklı yönlere saçılır. Katman kartın içinde kırpılır, yazıların arkasında kalır, dokunmayı veya ekran okuyucuyu etkilemez. Bitişte temizlenir; yeniden çizimler aynı 2,6 saniyelik açılış penceresini uzatmaz. Hareketi Azalt ve görünmeyen sekmede oynatılmaz.

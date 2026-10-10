@@ -38,8 +38,9 @@ test('Opening currency rain is confined to net card and does not restart its win
  try{
   const hosts=[],frames=[],card={append:host=>hosts.push(host)},doc={createElement:tag=>({style:{},children:[],setAttribute(name,value){this[name]=value},append(piece){this.children.push(piece)},remove(){this.removed=true},...(tag==='span'?{animate(keyframes,options){frames.push({keyframes,options});return {finished:new Promise(()=>{}),cancel(){}}}}:{})})};
   const root={ownerDocument:doc,querySelector:selector=>selector==='.summary-card.net'?card:null,querySelectorAll:()=>[]};
-  const c=createMotionController({root,media:{matches:false}}),state={view:'calendar',month:'2026-10'};c.afterRender(state);assert.equal(hosts.length,1);assert.equal(hosts[0]['aria-hidden'],'true');assert.deepEqual(new Set(hosts[0].children.map(n=>n.textContent)),new Set(['$','€']));assert.ok(frames.every(f=>f.options.duration+f.options.delay<=2600));
-  now=2000;c.afterRender(state);assert.equal(hosts[0].removed,true);assert.equal(hosts.length,2);assert.ok(frames.slice(14).every(f=>f.options.duration+f.options.delay<=1600));now=4000;c.afterRender(state);assert.equal(hosts[1].removed,true);assert.equal(hosts.length,2);
+  const c=createMotionController({root,media:{matches:false}}),state={view:'calendar',month:'2026-10'};c.afterRender(state);assert.equal(hosts.length,1);assert.equal(hosts[0]['aria-hidden'],'true');assert.deepEqual(new Set(hosts[0].children.map(n=>n.textContent)),new Set(['💵','💶']));assert.ok(frames.every(f=>f.options.duration+f.options.delay<=2600));
+  const count=frames.length;assert.ok(hosts[0].children.every(n=>Number.parseInt(n.style.fontSize)>=30));assert.ok(frames.every(f=>f.keyframes.some(k=>k.opacity>=.8)));
+  now=2000;c.afterRender(state);assert.equal(hosts[0].removed,true);assert.equal(hosts.length,2);assert.ok(frames.slice(count).every(f=>f.options.duration+f.options.delay<=1600));now=4000;c.afterRender(state);assert.equal(hosts[1].removed,true);assert.equal(hosts.length,2);
   createMotionController({root,media:{matches:true}}).afterRender(state);assert.equal(hosts.length,2);createMotionController({root,isVisible:()=>false}).afterRender(state);assert.equal(hosts.length,2);
  }finally{Date.now=originalNow;}
 });
