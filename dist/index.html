@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="HowMuchSpend">
   <title>HowMuchSpend · Ödeme takvimin</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="./apple-touch-icon.png"><link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./style.css"><script type="module" src="./app.js"></script>
+  <link rel="preload" href="./fonts/SpaceGrotesk.ttf" as="font" type="font/ttf" crossorigin><link rel="stylesheet" href="./style.css"><script type="module" src="./app.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -15,7 +15,7 @@
     <div class="workspace"><span class="avatar">O</span><div>Kişisel takvim<small>Biraz daha kontrol, biraz daha rahatlık.</small></div></div>
     <p class="nav-label">ÇALIŞMA ALANIN</p>
     <nav class="desktop-nav" aria-label="Ana menü"></nav>
-    <div class="sidebar-note"><span class="note-art">↗</span><h3>Ayın ritmi sende.</h3><p>Ödeme günlerini hatırlamak yerine, günün tadını çıkar.</p><button class="text-btn" data-action="add">İlk adımı at <span>↗</span></button></div>
+    <div class="sidebar-note"><span class="note-art">↗</span><h3>Ayın ritmi sende.</h3><p>Ödeme günlerini hatırlamak yerine, günün tadını çıkar.</p><button class="text-btn" data-action="day">Bugünü planla <span>↗</span></button></div>
     <div class="sidebar-footer"><span class="live-dot"></span> Bu cihazda saklanır <span class="version">v1.0</span></div>
   </aside>
   <div class="main-wrap">
@@ -32,7 +32,7 @@
     <div class="amount-field"><label for="amount">Tutar</label><div><span>₺</span><input name="amount" id="amount" inputmode="decimal" placeholder="0,00" required autocomplete="off" maxlength="18"></div></div>
     <label class="field">Ne için?<input id="entry-name" name="title" placeholder="Örn. Akbank kart ödemesi" maxlength="100" required></label>
     <div class="form-pair"><label class="field">Tarih<input name="startDate" id="entry-date" type="date" min="1900-01-01" max="2199-12-31" required></label><label class="field">Kategori<select name="category" id="category"></select></label></div>
-    <fieldset id="bank-field"><legend>Banka</legend><div class="bank-picker"><button type="button" data-bank="" class="selected">Diğer</button><button type="button" data-bank="ziraat">🌾 Ziraat</button><button type="button" data-bank="yapikredi">🔵 Yapı Kredi</button><button type="button" data-bank="akbank">🔴 Akbank</button></div></fieldset>
+    <fieldset id="bank-field"><legend>Banka</legend><div class="bank-picker"><button type="button" data-bank="" class="selected">Diğer</button><button type="button" data-bank="ziraat"><img class="bank-logo bank-ziraat" src="./assets/ziraat.png" alt=""> Ziraat</button><button type="button" data-bank="yapikredi"><img class="bank-logo bank-yapikredi" src="./assets/yapikredi.png" alt=""> Yapı Kredi</button><button type="button" data-bank="akbank"><img class="bank-logo bank-akbank" src="./assets/akbank.png" alt=""> Akbank</button></div></fieldset>
     <label class="field" id="scope-field" hidden>Değişikliği uygula<select id="edit-scope"><option value="one">Yalnızca bu kayıt</option><option value="future">Bu ve sonraki tekrarlar</option></select></label>
     <div class="form-pair" id="repeat-fields"><label class="field">Tekrar<select name="recurrence" id="repeat"><option value="none">Tek sefer</option><option value="monthly">Her ay</option><option value="weekly">Her hafta</option><option value="yearly">Her yıl</option></select></label><label class="field" id="repeat-end-field" hidden>Bitiş<select id="end-mode"><option value="never">Süresiz</option><option value="count">Belirli sayıda</option><option value="date">Belirli tarihte</option></select></label></div>
     <label class="field" id="count-field" hidden>Toplam tekrar sayısı <input type="number" id="repeat-count" min="1" max="10000" value="12"><small>İlk kayıt dahil. Taksitli ödemeler için de kullanabilirsin.</small></label>
@@ -44,6 +44,8 @@
     <div class="sheet-actions"><button type="button" class="danger-text" id="delete-entry" hidden>Kaydı sil</button><button type="submit" class="primary" id="save-entry">Kaydı ekle <span>↗</span></button></div>
   </form>
 </dialog>
+<dialog id="day-dialog" class="sheet day-sheet" aria-labelledby="day-title"><div class="sheet-handle"></div><div class="sheet-head"><div><p class="eyebrow">GÜNÜN PLANI</p><h2 id="day-title"></h2></div><button class="icon-button" data-close aria-label="Gün özetini kapat">✕</button></div><div id="day-content"></div></dialog>
+<dialog id="month-summary-dialog" class="sheet month-summary-sheet" aria-labelledby="month-summary-title"><div class="sheet-handle"></div><div class="sheet-head"><h2 id="month-summary-title"></h2><button class="icon-button" data-close aria-label="Aylık özeti kapat">✕</button></div><div id="month-summary-content"></div></dialog>
 <dialog id="confirm-dialog" class="small-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-copy"></p><div id="confirm-options"></div><button class="secondary full" data-close>Vazgeç</button></dialog>
 <div id="toast" class="toast" role="status"></div>
 <input type="file" id="import-file" accept="application/json,.json" hidden>

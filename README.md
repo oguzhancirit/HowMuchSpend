@@ -4,10 +4,17 @@ Gelirin, giderin ve ödeme günlerin. Hepsi tek bir takvimde.
 
 iPhone için tasarlanmış, Türkçe, ücretsiz ve bağımlılıksız bir gelir/gider takip web uygulaması. Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 
+## 1.1 güncellemesi
+
+- Takvim odaklı kompakt ana ekran; global ekleme düğmesi yerine güne dokunarak ekleme.
+- Ana takvim ve ana liste yalnızca bekleyen kayıtları gösterir. Günlük özet tamamlanan kayıtları da içerir.
+- Flow: gelir kaynakları → toplam → giderler ve kalan; gider geliri aşarsa plan açığı ayrı gösterilir.
+- Yerel Space Grotesk değişken fontu ve indigo/iris renk sistemi. Font lisansı `dist/fonts/OFL.txt` içindedir.
+
 ## Özellikler
 
 - Aylık takvim, günlük ayrıntı ve liste görünümü; gelir/gider filtreleri.
-- Ziraat 🌾, Yapı Kredi 🔵, Akbank 🔴 rozetleri. Bankalara bağlantı kurulmaz.
+- Kullanıcı tarafından sağlanan Ziraat, Yapı Kredi ve Akbank görselleri. Bankalara bağlantı kurulmaz.
 - Tek seferlik, aylık, haftalık ve yıllık kayıtlar; tarih veya tekrar sayısıyla bitiş.
 - Her tekrarın ayrı ödendi/alındı durumu.
 - Bir tekrarı veya o tarihten sonraki tekrarları düzenleme; geçmiş kayıtları koruma.
@@ -20,7 +27,7 @@ iPhone için tasarlanmış, Türkçe, ücretsiz ve bağımlılıksız bir gelir/
 
 ## Kullanım
 
-1. İlk giderini veya gelirini `+` düğmesiyle ekle.
+1. Takvimde bir güne dokun; günlük özetten giderini veya gelirini ekle.
 2. Düzenli ödeme için `Her ay` seç. Taksit için bitişi `Belirli sayıda` yap.
 3. Gerçekleştiğinde sağdaki durum düğmesini kullan.
 4. Ayarlar bölümünden düzenli JSON yedeği indir.
@@ -33,7 +40,7 @@ Uygulama sunucuya finansal veri göndermez. Kayıtlar `localStorage` içinde `ho
 
 Tarayıcı/site verilerini silmek kayıtları kaybettirebilir. Telefon veya adres değiştirirken JSON yedeğini indir ve yeni konumda geri yükle. Geri yükleme mevcut kayıtları değiştirir; öncesinde onay gösterilir ve yedek alma seçeneği sunulur. Kaydetme hatası sessizce başarı olarak gösterilmez.
 
-Bu kaynak kod ve örnek veriler kullanıcıya ait ekran görüntülerini, banka bakiyelerini veya gerçek finansal kayıtları içermez. Banka rozetleri tanımlayıcı emojilerdir, resmi logolar değildir.
+Bu kaynak kod ve örnek veriler kullanıcıya ait ekran görüntülerini, banka bakiyelerini veya gerçek finansal kayıtları içermez. Banka görselleri kullanıcı tarafından sağlanmıştır; bir banka ortaklığı veya bağlantısı ifade etmez.
 
 ## Hesap mantığı
 
@@ -56,7 +63,7 @@ python3 -m http.server 8000 --directory dist
 
 `http://localhost:8000` adresini aç. ES modülleri için dosyaya doğrudan `file://` ile çift tıklamak yerine HTTP sunucusu kullan. PWA servis çalışanı HTTPS veya localhost gerektirir.
 
-Derleme veya paket kurulumu gerekmez. Tüm istemci dosyaları `dist/` içinde; uygulama harici font, CDN, takip kodu veya üçüncü taraf JavaScript yüklemez.
+Derleme veya paket kurulumu gerekmez. Tüm istemci dosyaları `dist/` içinde; uygulama harici font servisi, CDN, takip kodu veya üçüncü taraf JavaScript yüklemez.
 
 ## Testler
 
