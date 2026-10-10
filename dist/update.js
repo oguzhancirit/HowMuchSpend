@@ -1,6 +1,6 @@
 /* Independent of app rendering, so a failed app module cannot block updates. */
 (() => {
-  const BUILD=5, VERSION='1.2.2';
+  const BUILD=6, VERSION='1.2.3';
   let checking=null,registration=null,newBuild=false,reloading=false,lastCheck=0;
   const editing=()=>!!document.querySelector('dialog[open]');
   const status=text=>{const node=document.getElementById('update-status');if(node)node.textContent=text;};

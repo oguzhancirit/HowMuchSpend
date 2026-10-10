@@ -4,6 +4,14 @@ Gelirin, giderin ve ödeme günlerin. Hepsi tek bir takvimde.
 
 iPhone için tasarlanmış, Türkçe, ücretsiz ve bağımlılıksız bir gelir/gider takip web uygulaması. Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 
+## 1.2.3 işlev odaklı ana ekran
+
+- Sloganlar, büyük giriş başlığı, tanıtım kutuları ve dekoratif alt metinler kaldırıldı.
+- Ana ekran doğrudan ay seçimi, filtreler ve geniş takvimle başlar. Mobil takvimin yan boşlukları azaltıldı; gün hücreleri genişledi ve büyüdü.
+- Aylık gelir/gider/net özeti takvimin altında tek kompakt satırda tutulur. Seçili gün ve bekleyen kayıtlar aşağıda görünür.
+- Merkezi + ekleme akışı, küçük kategori emojileri, banka görselleri ve günlük tutarlar korunur.
+- Ayarlar'da bildirimlerin etkin olmadığı açıkça belirtilir. Bu sürüm ödeme bildirimi göndermez; çalışmayan bir izin düğmesi eklenmemiştir.
+
 ## 1.2.2 logo ve takvim boyutları
 
 - Koyu zeminde geometrik H monogramı; uygulama başlığı, favicon ve PWA ikonları aynı tasarımı kullanır.
