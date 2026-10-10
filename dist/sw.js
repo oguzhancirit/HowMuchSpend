@@ -1,5 +1,5 @@
-const CACHE='howmuchspend-shell-v4';
-const ASSETS=['./','./index.html','./style.css?v=4','./app.js?v=4','./update.js?v=4','./model.js?v=4','./icon.svg','./manifest.webmanifest','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./assets/ziraat.png','./assets/akbank.png','./assets/yapikredi.png'];
+const CACHE='howmuchspend-shell-v5';
+const ASSETS=['./','./index.html','./style.css?v=5','./app.js?v=5','./update.js?v=5','./model.js?v=5','./icon.svg?v=5','./manifest.webmanifest','./apple-touch-icon.png?v=5','./icon-192.png?v=5','./icon-512.png?v=5','./assets/ziraat.png','./assets/akbank.png','./assets/yapikredi.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS.map(path=>new Request(path,{cache:'reload'})))));self.skipWaiting();});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('howmuchspend-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==location.origin)return;if(event.request.mode==='navigate'){event.respondWith(fetch(new Request(event.request,{cache:'no-store'})).then(r=>{if(r.ok){const copy=r.clone();caches.open(CACHE).then(c=>c.put('./index.html',copy));}return r;}).catch(()=>caches.open(CACHE).then(cache=>cache.match('./index.html'))));return;}
