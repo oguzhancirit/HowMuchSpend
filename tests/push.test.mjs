@@ -61,7 +61,7 @@ test('Private updater is off by default, rejects cross-origin, and records sanit
   const request=(path,origin)=>new Request('https://test.local/api/push/'+path,{method:'POST',headers:origin?{Origin:origin}:{}});
   assert.equal((await fetchHandler(request('private-dispatch'),env)).status,403);
   env.SITES_PRIVATE_SCHEDULER='1';assert.equal((await fetchHandler(request('private-dispatch','https://evil.test'),env)).status,403);
-  const original=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;return Response.json({reason:'BadJwtToken',secret:'DO_NOT_STORE'},{status:403})};
+  const original=globalThis.fetch;let calls=0;globalThis.fetch=async(url,options)=>{assert.equal(options.redirect,'manual');calls++;return Response.json({reason:'BadJwtToken',secret:'DO_NOT_STORE'},{status:403})};
   try{
     assert.equal((await fetchHandler(request('private-test'),env)).status,502);
     const stored=env.DB.sql.prepare("SELECT value FROM push_state WHERE key='last_test_result'").get().value;

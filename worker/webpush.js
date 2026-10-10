@@ -49,8 +49,8 @@ export async function sendPush(subscription,payload,env){
   try{body=await encryptPayload(payload,subscription.keys)}catch(e){throw Object.assign(new Error('Push encryption failed'),{stage:'encryption',causeName:e.name});}
   try{authorization=await vapidAuthorization(subscription.endpoint,env)}catch(e){throw Object.assign(new Error('Push signing failed'),{stage:'signing',causeName:e.name});}
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
-  try{return await fetch(subscription.endpoint,{method:'POST',redirect:'error',headers:{Authorization:authorization,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:'3600',Urgency:'normal'},body,signal:controller.signal});}
-  catch(e){throw Object.assign(new Error('Push network failed'),{stage:'network',causeName:e.name});}
+  try{return await fetch(subscription.endpoint,{method:'POST',redirect:'manual',headers:{Authorization:authorization,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:'3600',Urgency:'normal'},body,signal:controller.signal});}
+  catch(e){const diagnostic=String(e.message||'').replace(/https?:\/\/[^\s"']+/g,'[url]').replace(/[A-Za-z0-9_+\/-]{24,}/g,'[redacted]').replace(/[^A-Za-z0-9 .,;:()_\[\]-]/g,'').slice(0,180);throw Object.assign(new Error('Push network failed'),{stage:'network',causeName:e.name,diagnostic});}
   finally{clearTimeout(timer);}
 }
 export async function providerReason(response){

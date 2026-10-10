@@ -30,7 +30,7 @@ async function testDevice(env,id){
         }
         await recordTestResult(env,id,{ok:true,stage:'provider',providerStatus:r.status});return json({ok:true});
       }catch(e){const stage=e.stage||'server',causeName=/^[A-Za-z]{1,50}$/.test(e.causeName||'')?e.causeName:'Error';
-        await recordTestResult(env,id,{ok:false,stage,reason:causeName});
+        await recordTestResult(env,id,{ok:false,stage,reason:causeName,...(e.diagnostic?{diagnostic:e.diagnostic}:{})});
         await env.DB.prepare('UPDATE push_devices SET last_test_at = ? WHERE id = ?').bind(now-45000,id).run();
         return json({error:'Test gönderilemedi: '+stage+' · '+causeName+'. Telefon iznini tekrar açmana gerek yok.'},502);
       }
