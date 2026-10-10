@@ -9,7 +9,7 @@ function fixture({hidden=false,broken=false}={}){
   const listeners={},storage=new Map([['howmuchspend.data.v1','LEDGER_UNCHANGED'],['howmuchspend.recovery.v1','PLAN_UNCHANGED']]),nodes=new Map();let month='2026-10',currency='TRY',demo=false,confirmation,downloaded;
   if(broken)storage.set(Payments.PAYMENT_KEY,'broken-json');
   const data={...Model.blank(),entries:[{id:'pay',type:'expense',category:'card',bank:'akbank',currency:'TRY',title:'Akbank kart',amountCents:2300000,startDate:'2026-10-05',recurrence:'monthly',count:null,endDate:null,paidDates:['2026-10-05'],skips:[],overrides:{},notes:''}]};
-  const ctx=vm.createContext({...Model,...Payments,crypto:globalThis.crypto,Intl,Date,structuredClone,Number,JSON,FormData:class{constructor(form){this.entries=Object.entries(form.fields).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}*[Symbol.iterator](){yield* this.entries}getAll(k){return this.entries.filter(([key])=>key===k).map(([,v])=>v)}},document:{addEventListener:(n,f)=>listeners[n]=f,getElementById:id=>nodes.get(id)},window:{addEventListener(){}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},getData:()=>data,getMonth:()=>month,setMonth:m=>month=m,getCurrency:()=>currency,setCurrency:c=>currency=c,isDemo:()=>demo,money:(n,c)=>hidden?'••••':Model.formatAmount(n,c),esc:s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x])),bankImage:b=>`<img alt="${b}">`,toast(){},onChange(){},download:(...args)=>downloaded=args,confirmBox:(...args)=>confirmation=args});
+  const ctx=vm.createContext({...Model,...Payments,crypto:globalThis.crypto,Intl,Date,structuredClone,Number,JSON,FormData:class{constructor(form){this.entries=Object.entries(form.fields).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}*[Symbol.iterator](){yield* this.entries}getAll(k){return this.entries.filter(([key])=>key===k).map(([,v])=>v)}get(k){return this.getAll(k)[0]??null}},document:{addEventListener:(n,f)=>listeners[n]=f,getElementById:id=>nodes.get(id)},window:{addEventListener(){}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},getData:()=>data,getMonth:()=>month,setMonth:m=>month=m,getCurrency:()=>currency,setCurrency:c=>currency=c,isDemo:()=>demo,money:(n,c)=>hidden?'••••':Model.formatAmount(n,c),esc:s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x])),bankImage:b=>`<img alt="${b}">`,toast(){},onChange(){},download:(...args)=>downloaded=args,confirmBox:(...args)=>confirmation=args});
   vm.runInContext(source+'\nvar controller=createPaymentsController({getData,getMonth,setMonth,getCurrency,setCurrency,isDemo,money,esc,bankImage,toast,onChange,download,confirmBox});',ctx);
   const page=()=>vm.runInContext('controller.page()',ctx);
   const click=(action,props={})=>listeners.click({target:{closest:()=>({dataset:{paymentAction:action,...props},disabled:false})}});
@@ -47,4 +47,13 @@ test('Navigation preserves month draft; currency changes never relabel a recorde
 });
 test('Corrupt storage is retained for backup and cannot be overwritten by adding a card',()=>{
   const f=fixture({broken:true});assert.match(f.page(),/verisi okunamadı/);f.click('add');assert.equal(f.storage.get(Payments.PAYMENT_KEY),'broken-json');f.click('backup');assert.equal(f.downloaded()[1],'broken-json');assert.equal(f.storage.get('howmuchspend.data.v1'),'LEDGER_UNCHANGED');
+});
+
+test('Turkish month selector replaces locale-dependent date input, navigates without writes and protects open debt drafts',()=>{
+  const f=fixture(),before=JSON.stringify([...f.storage]);
+  assert.match(f.page(),/tracking-month-label/);assert.match(f.page(),/>Ekim<\/span>/);assert.doesNotMatch(f.page(),/type="month"|October/);
+  f.click('pick-month');assert.match(f.page(),/id="payment-month-picker"/);assert.match(f.page(),/Aralık/);
+  f.submit('payment-month-picker',{pickerYear:'2027',pickerMonth:'12'});assert.match(f.page(),/>Aralık<\/span>/);assert.match(f.page(),/2027<\/span>/);assert.doesNotMatch(f.page(),/id="payment-month-picker"/);
+  f.submit('payment-month-picker',{pickerYear:'2200',pickerMonth:'01'});assert.match(f.page(),/2027<\/span>/);assert.equal(JSON.stringify([...f.storage]),before);
+  f.setMonth('2026-10');f.add();f.click('statement');f.click('month',{value:'1'});assert.match(f.page(),/Ekim 2026 borç kaydı/);assert.match(f.page(),/aria-controls="payment-month-picker" disabled/);
 });

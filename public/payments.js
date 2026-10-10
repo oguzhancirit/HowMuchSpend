@@ -1,5 +1,5 @@
-import {BANKS,CATEGORIES,CURRENCIES,parseAmount,today,shiftMonth} from './model.js?v=16';
-import {PAYMENT_KEY,emptyPayments,validatePayments,cardMonth,cardPayments,calendarCardSuggestions,monthlyHistory,spendingBreakdown,validMonth} from './payments-model.js?v=16';
+import {BANKS,CATEGORIES,CURRENCIES,parseAmount,today,shiftMonth} from './model.js?v=17';
+import {PAYMENT_KEY,emptyPayments,validatePayments,cardMonth,cardPayments,calendarCardSuggestions,monthlyHistory,spendingBreakdown,validMonth} from './payments-model.js?v=17';
 
 const number=n=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n/100);
 const moneyInput=(v,label)=>{if(/^0([,.]0{1,2})?$/.test(String(v).trim()))return 0;const n=parseAmount(v);if(n===null)throw Error(label+' için geçerli bir tutar gir (0 olabilir).');return n;};
@@ -7,7 +7,7 @@ const monthLabel=m=>new Intl.DateTimeFormat('tr-TR',{month:'long',year:'numeric'
 const categories=Object.entries(CATEGORIES).filter(([k,c])=>c.type==='expense'&&!['card','loan'].includes(k));
 
 export function createPaymentsController({getData,getMonth,setMonth,getCurrency,setCurrency=()=>{},isDemo,money,esc,bankImage,toast,onChange,download,confirmBox}){
-  let saved=emptyPayments(),storageError='',selectedId='',cardDraft=null,monthDraft=null,error='',allHistory=false;
+  let saved=emptyPayments(),storageError='',selectedId='',cardDraft=null,monthDraft=null,error='',allHistory=false,monthPicker=false;
   try{const raw=localStorage.getItem(PAYMENT_KEY);if(raw)saved=validatePayments(JSON.parse(raw));}catch{storageError='Ödeme Takibi verisi okunamadı. Yedeğini indir veya geçerli bir takip yedeği yükle.';}
   const fmt=(n,c)=>n==null?'—':money(n,c.currency),val=v=>esc(v??'');
   const bankFace=c=>c.bank?bankImage(c.bank):'<span class="tracking-bank-placeholder" aria-hidden="true">💳</span>';
@@ -20,7 +20,7 @@ export function createPaymentsController({getData,getMonth,setMonth,getCurrency,
     const c=saved.cards.find(c=>c.id===id);cardDraft=c?{...structuredClone(c)}:{id:crypto.randomUUID(),name:'Akbank',bank:'akbank',currency:getCurrency(),paymentSource:saved.cards.some(c=>c.bank==='akbank'&&c.currency===getCurrency())?'links':'bank',linkedIds:[],months:[]};monthDraft=null;error='';onChange('top');
   }
   function startMonth(){
-    const c=selectedCard();if(!c||readonly())return;
+    const c=selectedCard();if(!c||readonly())return;monthPicker=false;
     const month=getMonth(),record=c.months.find(r=>r.month===month),prev=cardMonth(c,getData(),shiftMonth(month,-1));
     monthDraft={month,openingMode:record?.openingMode||(prev.known?'previous':'manual'),opening:record?number(record.openingCents):prev.known?number(prev.closingCents):'',spend:record?number(record.spendCents):'0',cost:record?number(record.costCents):'0',paidMode:record?.paidMode||(c.paymentSource==='none'?'manual':'calendar'),paid:record?number(record.paidCents):c.paymentSource==='none'?'':'0'};
     for(const [key]of categories)monthDraft['category_'+key]=number(record?.breakdown[key]||0);
@@ -42,7 +42,12 @@ export function createPaymentsController({getData,getMonth,setMonth,getCurrency,
     return `<section class="panel tracking-form" data-editing-payments><h2>${val(monthLabel(monthDraft.month))} borç kaydı</h2><form id="payment-month-form"><label class="field">Geçen aydan gelen borç<select name="openingMode"><option value="manual" ${monthDraft.openingMode==='manual'?'selected':''}>Ekstreden kendim gireceğim</option><option value="previous" ${monthDraft.openingMode==='previous'?'selected':''} ${prev.known?'':'disabled'}>Önceki ayın kalanından otomatik</option></select></label>${monthDraft.openingMode==='previous'?`<div class="tracking-source"><span>Önceki ayın kalanı</span><strong>${fmt(prev.closingCents,c)}</strong></div>`:field('opening','Devreden borç ('+CURRENCIES[c.currency]+')',monthDraft.opening,'İlk kayıtta bankanın devreden tutarını gir. Borç yoksa 0.','required')}<div class="form-pair">${field('spend','Bu ay yeni harcama ('+CURRENCIES[c.currency]+')',monthDraft.spend,'Bu ay yansıyan taksitler dahil.','required')}${field('cost','Faiz + vergi + ücret ('+CURRENCIES[c.currency]+')',monthDraft.cost,'Ekstrendeki gerçek toplam maliyet.','required')}</div><label class="field">Bu ay ödenen<select name="paidMode"><option value="calendar" ${monthDraft.paidMode==='calendar'?'selected':''} ${c.paymentSource==='none'?'disabled':''}>Takvimdeki tamamlanan ödemeler</option><option value="manual" ${monthDraft.paidMode==='manual'?'selected':''}>Gerçek ödenen tutarı kendim gireceğim</option></select></label>${monthDraft.paidMode==='manual'?field('paid','Ödenen tutar ('+CURRENCIES[c.currency]+')',monthDraft.paid,'Kısmi veya geç ödeme için bu ay gerçekten ödediğin toplamı gir. Takvim tutarına ayrıca eklenmez.','required'):`<div class="tracking-source"><span>${payment.entries.filter(e=>e.paid).length} tamamlanan ödeme · Kayıt ayına göre</span><strong>${fmt(payment.paidCents,c)}</strong></div>`}<details class="tracking-categories" id="payment-categories"><summary>Yeni harcama nerelere dağıldı? <span>İsteğe bağlı ↓</span></summary><div class="form-pair">${categories.map(([k,c])=>field('category_'+k,c.emoji+' '+c.name,monthDraft['category_'+k])).join('')}</div><p class="tracking-note">Dağıtmadığın tutar “Diğer gider” olarak görünür. Kart ödemesini harcama dağılımına tekrar ekleme.</p></details><output id="payment-preview" class="tracking-preview">${val(preview)}</output><p class="form-error" role="alert">${val(error)}</p><div class="tracking-form-actions"><button type="button" class="secondary" data-payment-action="cancel">Vazgeç</button><button class="primary" type="submit">Ayı kaydet</button></div></form></section>`;
   }
   function trend(r,c){if(!r.known)return '<span class="tracking-trend muted">Borç bilgisi eksik</span>';const delta=r.deltaCents;return `<span class="tracking-trend ${delta<0?'income-color':delta>0?'expense-color':'muted'}">${delta<0?'↘ Borç azalıyor':delta>0?'↗ Borç artıyor':'→ Borç değişmedi'}${delta?` · ${fmt(Math.abs(delta),c)}`:''}</span>`;}
-  function strip(){const m=getMonth(),editing=!!monthDraft;return `<div class="tracking-month-strip"><button class="icon-button" data-payment-action="month" data-value="-1" aria-label="Önceki ay" ${editing||m==='1900-01'?'disabled':''}>‹</button><label><span class="sr-only">Takip ayı</span><input id="payment-month" type="month" value="${m}" min="1900-01" max="2199-12" ${editing?'disabled':''}></label><button class="icon-button" data-payment-action="month" data-value="1" aria-label="Sonraki ay" ${editing||m==='2199-12'?'disabled':''}>›</button><button class="today-btn" data-payment-action="today" ${editing?'disabled':''}>Bu ay</button></div>`;}
+  function strip(){
+    const m=getMonth(),editing=!!monthDraft,disabled=editing?'disabled':'';
+    const label=new Intl.DateTimeFormat('tr-TR',{month:'long'}).format(new Date(m+'-01T12:00:00'));
+    return `<div class="tracking-month-strip"><button class="icon-button" data-payment-action="month" data-value="-1" aria-label="Önceki ay" ${editing||m==='1900-01'?'disabled':''}>‹</button><button class="tracking-month-label" data-payment-action="pick-month" aria-label="Takip ayını seç: ${val(monthLabel(m))}" aria-expanded="${monthPicker}" aria-controls="payment-month-picker" ${disabled}><span>${val(label)}</span><span class="tracking-month-year">${m.slice(0,4)}</span><span class="tracking-month-chevron" aria-hidden="true">⌄</span></button><button class="icon-button" data-payment-action="month" data-value="1" aria-label="Sonraki ay" ${editing||m==='2199-12'?'disabled':''}>›</button><button class="today-btn" data-payment-action="today" ${disabled}>Bu ay</button></div>${monthPicker&&!editing?`<form id="payment-month-picker" class="panel tracking-month-picker"><label class="field">Ay<select name="pickerMonth" aria-label="Takip ayı">${Array.from({length:12},(_,i)=>{const n=String(i+1).padStart(2,'0'),name=new Intl.DateTimeFormat('tr-TR',{month:'long'}).format(new Date('2026-'+n+'-01T12:00:00'));return `<option value="${n}" ${m.slice(5)===n?'selected':''}>${val(name)}</option>`;}).join('')}</select></label><label class="field">Yıl<input name="pickerYear" type="number" inputmode="numeric" min="1900" max="2199" value="${m.slice(0,4)}" required aria-label="Takip yılı"></label><button type="submit" class="primary">Göster</button><button type="button" class="icon-button" data-payment-action="close-month-picker" aria-label="Ay seçimini kapat">✕</button></form>`:''}`;
+  }
+  function goMonth(m){if(!validMonth(m))return;monthPicker=false;setMonth(m);}
   function overview(){
     const cards=saved.cards.filter(c=>c.currency===getCurrency()),rows=cards.map(c=>({c,r:cardMonth(c,getData(),getMonth())})),known=rows.filter(({r})=>r.known),unknown=rows.length-known.length,currency={currency:getCurrency()};
     const remaining=known.reduce((s,{r})=>s+r.closingCents,0),paid=rows.reduce((s,{r})=>s+r.paidCents,0);
@@ -79,7 +84,7 @@ export function createPaymentsController({getData,getMonth,setMonth,getCurrency,
     return body+`<footer class="tracking-footer"><button class="text-btn" data-payment-action="backup">Takibi yedekle</button><label class="text-btn tracking-import">Yedeği yükle<input type="file" id="payment-import" accept="application/json,.json"></label><small>Bu cihazda saklanır.</small></footer>`;
   }
   document.addEventListener('submit',e=>{
-    if(!['payment-card-form','payment-month-form'].includes(e.target.id))return;e.preventDefault();capture(e.target);
+    if(!['payment-card-form','payment-month-form','payment-month-picker'].includes(e.target.id))return;e.preventDefault();if(e.target.id==='payment-month-picker'){if(monthDraft)return;const fields=new FormData(e.target),m=String(fields.get('pickerYear')||'')+'-'+String(fields.get('pickerMonth')||'');if(!validMonth(m)){toast('1900–2199 arasında geçerli bir ay ve yıl seç.');return;}goMonth(m);return;}capture(e.target);
     try{
       if(e.target.id==='payment-card-form'){
         const card={...cardDraft,linkedIds:cardDraft.paymentSource==='links'?cardDraft.linkedIds:[]};
@@ -104,9 +109,11 @@ export function createPaymentsController({getData,getMonth,setMonth,getCurrency,
       else if(a==='statement')startMonth();
       else if(a==='bank'){capture(document.getElementById('payment-card-form'));cardDraft.bank=b.dataset.bank;cardDraft.name=BANKS[cardDraft.bank]?.name||'';if(!cardDraft.bank&&cardDraft.paymentSource==='bank')cardDraft.paymentSource='none';error='';onChange();}
       else if(a==='suggestion'){startCard();cardDraft.bank=b.dataset.bank;cardDraft.currency=b.dataset.currency;cardDraft.name=BANKS[cardDraft.bank].name;cardDraft.paymentSource='bank';onChange();}
-      else if(a==='month'&&!monthDraft){const m=shiftMonth(getMonth(),Number(b.dataset.value));if(validMonth(m))setMonth(m);}
-      else if(a==='today'&&!monthDraft)setMonth(today().slice(0,7));
-      else if(a==='history-month'&&!monthDraft)setMonth(b.dataset.month);
+      else if(a==='pick-month'&&!monthDraft){monthPicker=!monthPicker;onChange();}
+      else if(a==='close-month-picker'){monthPicker=false;onChange();}
+      else if(a==='month'&&!monthDraft)goMonth(shiftMonth(getMonth(),Number(b.dataset.value)));
+      else if(a==='today'&&!monthDraft)goMonth(today().slice(0,7));
+      else if(a==='history-month'&&!monthDraft)goMonth(b.dataset.month);
       else if(a==='history'){allHistory=!allHistory;onChange();}
       else if(a==='calendar')onChange('calendar');
       else if(a==='remove'&&cardDraft){const id=cardDraft.id,name=cardDraft.name;confirmBox('Kartı takipten kaldır?',name+' kartının Ödeme Takibi geçmişi kaldırılacak. Takvim ve Kurtuluş kayıtların korunur.',[{label:'Takipten kaldır',run:()=>{try{persist({...saved,cards:saved.cards.filter(c=>c.id!==id)});cardDraft=null;monthDraft=null;selectedId='';error='';onChange('top');toast('Kart takipten kaldırıldı.');}catch(err){toast(err.message);}}}]);}
@@ -118,7 +125,6 @@ export function createPaymentsController({getData,getMonth,setMonth,getCurrency,
     if(form?.id==='payment-month-form'&&monthDraft){monthDraft[e.target.name]=e.target.value;const output=document.getElementById('payment-preview');if(output){try{const r=draftResult(),c=selectedCard();output.textContent=r.known?'Kalan borç: '+fmt(r.closingCents,c)+(r.creditCents?' · Fazla ödeme: '+fmt(r.creditCents,c):''):'Önceki ay veya ödeme kaynağı eksik';}catch(err){output.textContent=err.message;}}}
   });
   document.addEventListener('change',async e=>{
-    if(e.target.id==='payment-month'){if(validMonth(e.target.value)&&!monthDraft)setMonth(e.target.value);return;}
     if(e.target.id==='payment-import'){
       const file=e.target.files[0];e.target.value='';if(!file)return;if(isDemo()){toast('Önce örnek görünümden çık.');return;}
       try{if(file.size>4*1024*1024)throw Error('Takip yedeği 4 MB’den küçük olmalı.');const next=validatePayments(JSON.parse(await file.text()));confirmBox('Ödeme Takibi yedeğini yükle?',`${next.cards.length} kart içeren yedek mevcut kart geçmişinin yerini alacak. Takvim ve Kurtuluş kayıtların korunur.`,[{label:'Yedeği yükle',run:()=>{try{localStorage.setItem(PAYMENT_KEY,JSON.stringify(next));saved=next;storageError='';cardDraft=null;monthDraft=null;selectedId='';onChange();toast('Kart geçmişi geri yüklendi.');}catch{toast('Yedek kaydedilemedi.');}}}]);}catch(err){toast(err.message);}return;
