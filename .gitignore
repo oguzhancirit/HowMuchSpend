@@ -4,3 +4,6 @@ node_modules/
 *.zip
 .env*
 coverage/
+dist/
+.sites-runtime/
+.wrangler/

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { blank,formatAmount,inCurrency,parseAmount,occurrences,totals,setPaid,editOccurrence,removeOccurrence,validateData,shiftMonth,validDate } from '../dist/model.js';
+import { blank,formatAmount,inCurrency,parseAmount,occurrences,totals,setPaid,editOccurrence,removeOccurrence,validateData,shiftMonth,validDate } from '../public/model.js';
 const entry=(overrides={})=>({id:'test-entry',type:'expense',title:'Test',amountCents:10001,currency:'TRY',category:'card',bank:'akbank',notes:'',startDate:'2026-01-31',recurrence:'monthly',count:null,endDate:null,paidDates:[],skips:[],overrides:{},...overrides});
 const db=(...entries)=>({...blank(),entries});
 const at=(data,date)=>occurrences(data,date,date)[0];

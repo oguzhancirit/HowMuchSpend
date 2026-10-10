@@ -1,0 +1,27 @@
+name: Payment reminders
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/payment-reminders.yml', 'scripts/send-reminders.mjs']
+permissions:
+  id-token: write
+  contents: write
+concurrency:
+  group: payment-reminders
+  cancel-in-progress: false
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run authenticated reminder check
+        env:
+          SITE_ORIGIN: https://howmuchspend.ozicirit9.chatgpt.site
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          curl --fail --silent --show-error --retry 2 "https://raw.githubusercontent.com/${GH_REPOSITORY}/main/scripts/send-reminders.mjs" -o /tmp/send-reminders.mjs
+          node /tmp/send-reminders.mjs
