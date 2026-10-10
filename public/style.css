@@ -81,3 +81,8 @@ main{overflow-wrap:break-word;min-width:0}main:focus{outline:none}.panel{box-sha
 .calendar-grid .day:nth-child(7n+6):not(.today) .day-number,.calendar-grid .day:nth-child(7n):not(.today) .day-number{color:var(--muted)}
 .day.today .day-number{width:28px;height:28px;min-width:28px;border-radius:50%;font-weight:600}
 @media(max-width:375px){.day-number{font-size:17px;height:24px;min-width:24px}.day.today .day-number{width:26px;height:26px;min-width:26px}}
+
+/* Weekend columns stay softly neutral in every monthly calendar. */
+:root{--weekend-bg:#252827}
+:root[data-theme=light]{--weekend-bg:#eef0ef}
+.calendar-grid .day:nth-child(7n+6),.calendar-grid .day:nth-child(7n){background:var(--weekend-bg)}
