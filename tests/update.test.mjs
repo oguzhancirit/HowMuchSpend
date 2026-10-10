@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../public/update.js',import.meta.url),'utf8');
-function harness({release={build:10,version:'1.3.2'},open=false,offline=false}={}){
+function harness({release={build:11,version:'1.3.3'},open=false,offline=false}={}){
  const listeners={},nodes=new Map(),calls={reload:0,fetch:0,update:0};
  const status={textContent:''};nodes.set('update-status',status);
  const banner={classList:{add(){},remove(){}},setAttribute(){},querySelector:()=>({textContent:''})};
@@ -16,8 +16,8 @@ test('Update independently registers worker and bypasses HTTP cache',async()=>{
  const h=harness();await h.settle();assert.equal(h.calls.registration.url,'./sw.js');assert.equal(h.calls.registration.options.updateViaCache,'none');assert.equal(h.calls.request.options.cache,'no-store');assert.equal(h.calls.update,1);assert.equal(h.calls.reload,0);assert.match(h.status.textContent,/Güncel/);
 });
 test('New version reloads idle app, but preserves open editing dialog',async()=>{
- const idle=harness({release:{build:11,version:'1.3.3'}});await idle.settle();assert.equal(idle.calls.reload,1);
- const editing=harness({release:{build:11,version:'1.3.3'},open:true});await editing.settle();assert.equal(editing.calls.reload,0);assert.ok(editing.nodes.has('update-banner'));
+ const idle=harness({release:{build:12,version:'1.3.4'}});await idle.settle();assert.equal(idle.calls.reload,1);
+ const editing=harness({release:{build:12,version:'1.3.4'},open:true});await editing.settle();assert.equal(editing.calls.reload,0);assert.ok(editing.nodes.has('update-banner'));
 });
 test('Resume and online checks coalesce; manual check runs despite throttling',async()=>{
  const h=harness();await h.settle();h.listeners.pageshow();h.listeners.visibilitychange();await h.settle();assert.equal(h.calls.fetch,1);

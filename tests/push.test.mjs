@@ -12,12 +12,18 @@ function db(){const sql=new DatabaseSync(':memory:');sql.exec(readFileSync(new U
 async function fixture(){const pair=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);const recipient=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);return {env:{DB:db(),VAPID_PRIVATE_JWK:JSON.stringify(await crypto.subtle.exportKey('jwk',pair.privateKey)),VAPID_PUBLIC_KEY:b64(await crypto.subtle.exportKey('raw',pair.publicKey)),VAPID_SUBJECT:'https://test.local'},pair,subscription:{endpoint:'https://web.push.apple.com/test',keys:{p256dh:b64(await crypto.subtle.exportKey('raw',recipient.publicKey)),auth:b64(crypto.getRandomValues(new Uint8Array(16)))}}};}
 test('Calendar differentiates empty, paid, pending and mixed days',()=>{assert.equal(dayStatus([]).className,'');assert.equal(dayStatus([{paid:true}]).className,'status-paid');assert.equal(dayStatus([{paid:false}]).className,'status-pending');assert.match(dayStatus([{paid:true},{paid:false}]).className,/status-mixed/);});
 test('Reminder projection never uploads notes and hides amounts/title by default without mutating ledger',()=>{const before=JSON.stringify(rules),minimal=reminderRules(rules),details=reminderRules(rules,true);assert.equal(minimal.entries[0].title,'Ödeme');assert.equal(minimal.entries[0].amountCents,1);assert.equal(minimal.entries[0].notes,'');assert.equal(details.entries[0].amountCents,45900000);assert.equal(details.entries[0].notes,'');assert.equal(JSON.stringify(rules),before);});
-test('Istanbul reminder time, short months, paid/skipped/end dates and later years',()=>{
-  const at=Date.parse('2026-02-27T09:00:00+03:00');assert.equal(dueReminders(rules,1,at-1).length,0);assert.equal(dueReminders(rules,1,at)[0].date,'2026-02-28');
-  assert.equal(dueReminders({...rules,entries:[{...entry,paidDates:['2026-02-28']}]},1,at).length,0);
-  assert.equal(dueReminders({...rules,entries:[{...entry,skips:['2026-02-28']}]},1,at).length,0);
-  assert.equal(dueReminders({...rules,entries:[{...entry,endDate:'2026-01-31'}]},1,at).length,0);
-  assert.equal(dueReminders(rules,1,Date.parse('2030-03-30T09:00:00+03:00'))[0].date,'2030-03-31');
+test('Payment-day slots use Istanbul time, ignore legacy lead days, and skip paid/skipped dates',()=>{
+  const at=Date.parse('2026-02-28T08:30:00+03:00');
+  assert.equal(dueReminders(rules,1,at-1).length,0);
+  const morning=dueReminders(rules,7,at)[0];assert.equal(morning.date,'2026-02-28');assert.equal(morning.slot,'08:30');
+  const noon=dueReminders(rules,0,Date.parse('2026-02-28T12:00:00+03:00'))[0];assert.equal(noon.slot,'12:00');assert.notEqual(noon.deliveryKey,morning.deliveryKey);
+  assert.equal(dueReminders(rules,0,Date.parse('2026-02-28T17:00:00+03:00'))[0].slot,'17:00');
+  assert.equal(dueReminders(rules,0,Date.parse('2026-02-28T23:00:00+03:00')).length,0);
+  assert.equal(dueReminders(rules,0,Date.parse('2026-03-01T08:30:00+03:00')).length,0);
+  assert.equal(dueReminders({...rules,entries:[{...entry,paidDates:['2026-02-28']}]},0,at).length,0);
+  assert.equal(dueReminders({...rules,entries:[{...entry,skips:['2026-02-28']}]},0,at).length,0);
+  assert.equal(dueReminders({...rules,entries:[{...entry,endDate:'2026-01-31'}]},0,at).length,0);
+  assert.equal(dueReminders(rules,0,Date.parse('2030-03-31T08:30:00+03:00'))[0].date,'2030-03-31');
 });
 test('Encryption exactly matches RFC 8291 section 5 test vector',async()=>{
   const receiver='BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4';
@@ -41,7 +47,7 @@ test('Device APIs require capability and same-origin writes, preserve isolation,
   assert.equal((await fetchHandler(req('DELETE'),env)).status,200);assert.equal(env.DB.sql.prepare('SELECT COUNT(*) n FROM push_devices').get().n,0);
 });
 test('Dispatcher deduplicates, retries transient failure and retires expired subscriptions',async()=>{
-  const {env,subscription}=await fixture(),token='c'.repeat(64),id=await hash(token),now=Date.parse('2026-02-27T09:00:00+03:00');
+  const {env,subscription}=await fixture(),token='c'.repeat(64),id=await hash(token),now=Date.parse('2026-02-28T08:30:00+03:00');
   const add=()=>env.DB.prepare('INSERT INTO push_devices (id,subscription,rules,lead_days,details,enabled,updated_at) VALUES (?,?,?,?,?,1,?)').bind(id,JSON.stringify(subscription),JSON.stringify(rules),1,0,now).run();await add();
   const original=globalThis.fetch;let calls=0,code=503;globalThis.fetch=async()=>{calls++;return new Response('',{status:code});};
   try{assert.equal((await dispatch(env,now)).failed,1);assert.equal((await dispatch(env,now+60000)).sent,0);code=201;assert.equal((await dispatch(env,now+360000)).sent,1);assert.equal((await dispatch(env,now+720000)).sent,0);assert.equal(calls,2);
@@ -70,5 +76,21 @@ test('Private updater is off by default, rejects cross-origin, and records sanit
     env.DB.sql.exec('UPDATE push_devices SET last_test_at=0');globalThis.fetch=async()=>new Response(null,{status:201});
     assert.equal((await fetchHandler(request('private-test'),env)).status,200);
     assert.equal(JSON.parse(env.DB.sql.prepare("SELECT value FROM push_state WHERE key='last_test_result'").get().value).ok,true);
+  }finally{globalThis.fetch=original;}
+});
+
+test('Each payment has three independent slots; synced completion cancels later slots and legacy clients use payment day',async()=>{
+  const {env,subscription}=await fixture(),id=await hash('e'.repeat(64));
+  const register=async(currentRules)=>fetchHandler(new Request('https://test.local/api/push/device',{method:'PUT',headers:{Authorization:'Bearer '+'e'.repeat(64),Origin:'https://test.local','Content-Type':'application/json'},body:JSON.stringify({subscription,rules:currentRules,leadDays:7,details:false})}),env);
+  await register(rules);assert.equal(env.DB.sql.prepare('SELECT lead_days FROM push_devices').get().lead_days,0);
+  const original=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;return new Response(null,{status:201})};
+  const morning=Date.parse('2026-02-28T08:30:00+03:00'),noon=Date.parse('2026-02-28T12:00:00+03:00'),evening=Date.parse('2026-02-28T17:00:00+03:00');
+  try{
+    assert.equal((await dispatch(env,morning)).sent,1);assert.equal((await dispatch(env,morning+60000)).sent,0);
+    assert.equal((await dispatch(env,noon)).sent,1);assert.equal((await dispatch(env,evening)).sent,1);assert.equal(calls,3);
+    env.DB.sql.exec('DELETE FROM push_deliveries');calls=0;
+    assert.equal((await dispatch(env,morning)).sent,1);
+    await register({...rules,entries:[{...entry,paidDates:['2026-02-28']}]});
+    assert.equal((await dispatch(env,noon)).sent,0);assert.equal((await dispatch(env,evening)).sent,0);assert.equal(calls,1);
   }finally{globalThis.fetch=original;}
 });

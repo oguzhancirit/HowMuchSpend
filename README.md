@@ -18,7 +18,7 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 2. **Mevcut ana ekran simgesinden** gir. Ayarlar → Bildirimler → Bildirimleri aç.
 3. iOS izin penceresinde İzin Ver'i seç, ardından Test bildirimi'ne dokun.
 
-Varsayılan: ödeme tarihinden 1 gün önce, Türkiye saatiyle 09:00 sonrası. 0/1/3/7 gün seçilebilir. Aynı sistem beklenen gelirleri de hatırlatır. Sites'e bağlı saatlik görev zamanı gelen hatırlatmaları kontrol eder. Gönderim 09:00 sonrası gerçekleşir; kesin dakika garantisi yoktur.
+Ödeme günü Türkiye saatiyle **08:30, 12:00 ve 17:00** olmak üzere üç hatırlatma. Aynı saatlerde beklenen gelirler de hatırlatılır. Ödendi/alındı olarak işaretlenen ve eşitlenen kayıtlar sonraki gönderimlerden çıkarılır. Bulut görevi gecikebilir; kesin dakika teslimatı garantisi yoktur.
 
 Ödenen, alınan, silinen ve atlanan kayıtlar eşitleme tamamlandıktan sonra bildirimden çıkarılır. Çevrimdışı değişiklikler bağlantı gelince tekrar gönderilir; eşitlenene kadar sunucu önceki durumla çalışır ve uygulama uyarı gösterir. Bildirim geldiğinde kayda dokunarak ilgili gün ve işlemi açabilirsin.
 
@@ -38,9 +38,9 @@ Ana ekran uygulamasını silme veya tarayıcı verilerini temizleme: bu işlemle
 
 ## Otomatik gönderim
 
-Sites'e bağlı saatlik görev, mevcut owner-private platform erişimini kullanır; GitHub'a servis anahtarı eklenmez. `/api/push/private-dispatch` yalnızca `SITES_PRIVATE_SCHEDULER=1` ile etkinleşir. Sites özel erişim kapısı yetkilendirmeyi Worker'dan önce uygular. Görev her çalışmada mevcut erişim politikasını doğrular; owner-private değilse işlem yapmaz. **Site paylaşımını değiştirmeden önce bu entegrasyonu ve görevi kapat.** `/api/push/private-test`, aynı özel erişim sınırında etkin cihazlara gerçek Web Push testi gönderir.
+Sites'e bağlı günde üç kez çalışan görev, mevcut owner-private platform erişimini kullanır; GitHub'a servis anahtarı eklenmez. `/api/push/private-dispatch` yalnızca `SITES_PRIVATE_SCHEDULER=1` ile etkinleşir. Sites özel erişim kapısı yetkilendirmeyi Worker'dan önce uygular. Görev her çalışmada mevcut erişim politikasını doğrular; owner-private değilse işlem yapmaz. **Site paylaşımını değiştirmeden önce bu entegrasyonu ve görevi kapat.** `/api/push/private-test`, aynı özel erişim sınırında etkin cihazlara gerçek Web Push testi gönderir.
 
-`push_state.last_dispatch` son kontrol zamanıdır. Üç saati geçen gecikme uygulamada gösterilir. `last_test_result` sadece hata aşaması/sağlayıcı kodu içerir; abonelik adresleri, anahtarlar veya finansal veri içermez. Başarısız test 15 saniye sonra, başarılı test 60 saniye sonra tekrar denenebilir.
+`push_state.last_dispatch` son kontrol zamanıdır. Görev 08:30/12:00/17:00 çalışır; her ödeme ve saat için ayrı gönderim kilidi vardır. Kaçırılan slotlar toplu gönderilmez, önceki günler tekrar hatırlatılmaz. Eski istemcilerin gün-öncesi ayarı sunucuda ödeme gününe sabitlenir. On sekiz saati geçen gecikme uygulamada gösterilir. `last_test_result` sadece hata aşaması/sağlayıcı kodu içerir; abonelik adresleri, anahtarlar veya finansal veri içermez. Başarısız test 15 saniye sonra, başarılı test 60 saniye sonra tekrar denenebilir.
 
 Eski GitHub OIDC endpoint'i ayrı yetki kontrolünü korur; GitHub workflow saatlik cron'u kapalıdır. Sites görevine ek bir GitHub zamanlayıcısı kurulmaz.
 

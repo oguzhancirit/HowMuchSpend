@@ -1,16 +1,19 @@
 import * as Model from '../public/model.js';
 import * as Push from './webpush.js';
 export const istanbulDate=now=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));
-export function dueReminders(rules,leadDays,now=Date.now()){
-  const local=istanbulDate(now),from=Model.addDays(local,leadDays-2),to=Model.addDays(local,leadDays);
-  return Model.occurrences(rules,from,to).filter(e=>!e.paid).map(e=>({...e,remindDate:Model.addDays(e.date,-leadDays)})).filter(e=>{
-    const at=Date.parse(e.remindDate+'T09:00:00+03:00');return at<=now&&now-at<36*3600000;
-  });
+export const REMINDER_TIMES=['08:30','12:00','17:00'];
+export function dueReminders(rules,_legacyLeadDays,now=Date.now()){
+  const date=istanbulDate(now);
+  // Send only the most recent slot, with a bounded allowance for cloud-task delay.
+  // Never replay missed morning reminders together at noon or on another day.
+  const slot=REMINDER_TIMES.filter(time=>Date.parse(date+'T'+time+':00+03:00')<=now).at(-1);
+  if(!slot||now-Date.parse(date+'T'+slot+':00+03:00')>=2*3600000)return [];
+  return Model.occurrences(rules,date,date).filter(e=>!e.paid).map(e=>({...e,slot,deliveryKey:e.key+'#'+slot}));
 }
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const tokenOf=r=>r.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
 const ready=env=>!!env.DB&&!!env.VAPID_PRIVATE_JWK&&!!env.VAPID_PUBLIC_KEY&&!!env.VAPID_SUBJECT;
-async function status(env,id){const device=await env.DB.prepare('SELECT enabled, updated_at FROM push_devices WHERE id = ?').bind(id).first();const heartbeat=await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first();return {exists:!!device,enabled:!!device?.enabled,syncedAt:device?.updated_at||null,schedulerStale:!heartbeat||Date.now()-Number(heartbeat.value)>3*3600000};}
+async function status(env,id){const device=await env.DB.prepare('SELECT enabled, updated_at FROM push_devices WHERE id = ?').bind(id).first();const heartbeat=await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first();return {exists:!!device,enabled:!!device?.enabled,syncedAt:device?.updated_at||null,schedulerStale:!heartbeat||Date.now()-Number(heartbeat.value)>18*3600000};}
 async function bodyOf(request){const size=Number(request.headers.get('Content-Length')||0);if(size>2*1024*1024)throw new Error('Hatırlatma verisi çok büyük.');const text=await request.text();if(text.length>2*1024*1024)throw new Error('Hatırlatma verisi çok büyük.');return JSON.parse(text);}
 async function recordTestResult(env,id,result){
   // Diagnostics never contain subscription URLs, cryptographic keys or financial data.
@@ -44,23 +47,23 @@ export async function dispatch(env,now=Date.now()){
     for(const e of candidates){
       if(attempts>=20)break;
       const claim=crypto.randomUUID();
-      const leased=await env.DB.prepare(`INSERT INTO push_deliveries (device_id, occurrence_key, lead_days, state, claim, claim_until, attempts) VALUES (?, ?, ?, 'sending', ?, ?, 1) ON CONFLICT(device_id, occurrence_key, lead_days) DO UPDATE SET state = 'sending', claim = excluded.claim, claim_until = excluded.claim_until, attempts = push_deliveries.attempts + 1 WHERE push_deliveries.state != 'sent' AND push_deliveries.claim_until < ? AND push_deliveries.attempts < 5`).bind(device.id,e.key,device.lead_days,claim,now+120000,now).run();
+      const leased=await env.DB.prepare(`INSERT INTO push_deliveries (device_id, occurrence_key, lead_days, state, claim, claim_until, attempts) VALUES (?, ?, ?, 'sending', ?, ?, 1) ON CONFLICT(device_id, occurrence_key, lead_days) DO UPDATE SET state = 'sending', claim = excluded.claim, claim_until = excluded.claim_until, attempts = push_deliveries.attempts + 1 WHERE push_deliveries.state != 'sent' AND push_deliveries.claim_until < ? AND push_deliveries.attempts < 5`).bind(device.id,e.deliveryKey,0,claim,now+120000,now).run();
       if(!leased.meta.changes)continue;attempts++;
       // Re-check current rules after the atomic claim: a payment/edit can cancel a queued reminder.
       const fresh=await env.DB.prepare('SELECT * FROM push_devices WHERE id = ? AND enabled = 1').bind(device.id).first();
-      const current=fresh&&dueReminders(JSON.parse(fresh.rules),fresh.lead_days,now).find(x=>x.key===e.key);
-      if(!current||fresh.lead_days!==device.lead_days){await env.DB.prepare('DELETE FROM push_deliveries WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?').bind(device.id,e.key,device.lead_days,claim).run();continue;}
+      const current=fresh&&dueReminders(JSON.parse(fresh.rules),fresh.lead_days,now).find(x=>x.deliveryKey===e.deliveryKey);
+      if(!current){await env.DB.prepare('DELETE FROM push_deliveries WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?').bind(device.id,e.deliveryKey,0,claim).run();continue;}
       try{
         const label=Model.BANKS[current.bank]?.name||current.title;
         const dateLabel=current.date.split('-').reverse().join('.');
-        const payload={title:current.type==='income'?'Gelir hatırlatması':'Ödeme hatırlatması',body:fresh.details?`${label} · ${Model.formatAmount(current.amountCents,current.currency)} · ${dateLabel}`:`${dateLabel} tarihli ${current.type==='income'?'beklenen gelirin':'bekleyen ödemen'} var.`,tag:await Push.hash(device.id+e.key+device.lead_days),url:'./?date='+current.date+'&entry='+encodeURIComponent(current.seriesId)};
+        const payload={title:current.type==='income'?'Gelir hatırlatması':'Ödeme hatırlatması',body:fresh.details?`${label} · ${Model.formatAmount(current.amountCents,current.currency)} · ${dateLabel}`:`${dateLabel} tarihli ${current.type==='income'?'beklenen gelirin':'bekleyen ödemen'} var.`,tag:await Push.hash(device.id+e.deliveryKey),url:'./?date='+current.date+'&entry='+encodeURIComponent(current.seriesId)};
         const response=await Push.sendPush(JSON.parse(fresh.subscription),payload,env);
-        if(response.ok){await env.DB.prepare("UPDATE push_deliveries SET state = 'sent', sent_at = ?, last_error = NULL WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?").bind(now,device.id,e.key,device.lead_days,claim).run();sent++;}
+        if(response.ok){await env.DB.prepare("UPDATE push_deliveries SET state = 'sent', sent_at = ?, last_error = NULL WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?").bind(now,device.id,e.deliveryKey,0,claim).run();sent++;}
         else {
           if([404,410].includes(response.status))await env.DB.prepare('UPDATE push_devices SET enabled = 0 WHERE id = ?').bind(device.id).run();
-          await env.DB.prepare("UPDATE push_deliveries SET state = 'failed', claim_until = ?, last_error = ? WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?").bind(now+300000,'provider:'+response.status,device.id,e.key,device.lead_days,claim).run();failed++;
+          await env.DB.prepare("UPDATE push_deliveries SET state = 'failed', claim_until = ?, last_error = ? WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?").bind(now+300000,'provider:'+response.status,device.id,e.deliveryKey,0,claim).run();failed++;
         }
-      }catch{await env.DB.prepare("UPDATE push_deliveries SET state = 'failed', claim_until = ?, last_error = 'network' WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?").bind(now+300000,device.id,e.key,device.lead_days,claim).run();failed++;}
+      }catch{await env.DB.prepare("UPDATE push_deliveries SET state = 'failed', claim_until = ?, last_error = 'network' WHERE device_id = ? AND occurrence_key = ? AND lead_days = ? AND claim = ?").bind(now+300000,device.id,e.deliveryKey,0,claim).run();failed++;}
     }
   }
   await env.DB.prepare("INSERT INTO push_state (key, value) VALUES ('last_dispatch', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(String(now)).run();
@@ -71,7 +74,7 @@ export async function dispatch(env,now=Date.now()){
 export async function fetchHandler(request,env){
   const url=new URL(request.url);
   if(url.pathname.startsWith('/api/push/')){
-    if(url.pathname==='/api/push/config'&&request.method==='GET'){const heartbeat=ready(env)?await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first():null;return json({ready:ready(env),schedulerReady:!!heartbeat&&Date.now()-Number(heartbeat.value)<3*3600000,publicKey:env.VAPID_PUBLIC_KEY||null});}
+    if(url.pathname==='/api/push/config'&&request.method==='GET'){const heartbeat=ready(env)?await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first():null;return json({ready:ready(env),schedulerReady:!!heartbeat&&Date.now()-Number(heartbeat.value)<18*3600000,publicKey:env.VAPID_PUBLIC_KEY||null});}
     if(!ready(env))return json({error:'Bildirim sunucusu hazır değil.'},503);
     if(url.pathname==='/api/push/dispatch'&&request.method==='POST'){
       const bearer=request.headers.get('Authorization')?.replace(/^Bearer /,'');
@@ -102,6 +105,7 @@ export async function fetchHandler(request,env){
           const rules=Model.validateData(value.rules);if(rules.entries.length>1000)throw new Error('En fazla 1.000 hatırlatma serisi destekleniyor.');
           // Reject projections containing notes; do not retain the user's full financial ledger.
           for(const e of rules.entries){e.notes='';for(const o of Object.values(e.overrides))o.notes='';if(!value.details){e.title=e.type==='income'?'Beklenen gelir':'Ödeme';e.amountCents=1;e.bank='';for(const o of Object.values(e.overrides)){o.title=e.title;o.amountCents=1;o.bank='';}}}
+          value.leadDays=0;
           const subscription=await Push.validateSubscription(value.subscription),now=Date.now();
           await env.DB.prepare(`INSERT INTO push_devices (id, subscription, rules, lead_days, details, enabled, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?) ON CONFLICT(id) DO UPDATE SET subscription = excluded.subscription, rules = excluded.rules, lead_days = excluded.lead_days, details = excluded.details, enabled = 1, updated_at = excluded.updated_at`).bind(id,JSON.stringify(subscription),JSON.stringify(rules),value.leadDays,value.details?1:0,now).run();
           return json(await status(env,id));
