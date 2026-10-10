@@ -1,7 +1,8 @@
 name: Payment reminders
 on:
-  schedule:
-    - cron: '7 * * * *'
+  # Enable after Sites service access has been configured and verified:
+  # schedule:
+  #   - cron: '7 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -20,6 +21,7 @@ jobs:
       - name: Run authenticated reminder check
         env:
           SITE_ORIGIN: https://howmuchspend.ozicirit9.chatgpt.site
+          SITES_SERVICE_TOKEN: ${{ secrets.SITES_SERVICE_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           GH_REPOSITORY: ${{ github.repository }}
         run: |

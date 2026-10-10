@@ -48,7 +48,7 @@ export async function dispatch(env,now=Date.now()){
 export async function fetchHandler(request,env){
   const url=new URL(request.url);
   if(url.pathname.startsWith('/api/push/')){
-    if(url.pathname==='/api/push/config'&&request.method==='GET')return json({ready:ready(env),publicKey:env.VAPID_PUBLIC_KEY||null});
+    if(url.pathname==='/api/push/config'&&request.method==='GET'){const heartbeat=ready(env)?await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first():null;return json({ready:ready(env),schedulerReady:!!heartbeat&&Date.now()-Number(heartbeat.value)<3*3600000,publicKey:env.VAPID_PUBLIC_KEY||null});}
     if(!ready(env))return json({error:'Bildirim sunucusu hazır değil.'},503);
     if(url.pathname==='/api/push/dispatch'&&request.method==='POST'){
       const bearer=request.headers.get('Authorization')?.replace(/^Bearer /,'');

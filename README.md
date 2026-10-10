@@ -38,6 +38,8 @@ Ana ekran uygulamasını silme veya tarayıcı verilerini temizleme: bu işlemle
 
 ## Otomatik gönderim
 
+**Kurulum durumu:** Sites, dış sunuculara ChatGPT oturum kapısı uyguluyor (doğrulanan HTTP 401). Otomatik cron, servis erişimi yapılandırılana kadar pasif bırakıldı. Kullanıcının açık talebiyle Sites bypass token oluşturulmalı; yalnızca GitHub repository secret `SITES_SERVICE_TOKEN` içinde saklanmalı. Script bu anahtarı sadece sabit Site adresine `OAI-Sites-Authorization` başlığıyla gönderir, ayrıca OIDC yetkisini doğrulatır. Ardından workflow içindeki saatlik schedule etkinleştirilip manuel çalıştırma ve `push_state.last_dispatch` okunarak doğrulanmalı. İzin ve test bildirimleri, uygulama sahibinin normal oturumunda kullanılabilir.
+
 `.github/workflows/payment-reminders.yml` saatlik çalışır. GitHub'ın kısa ömürlü OIDC JWT'si sunucuda imza, audience, repository ID, main branch ve tam workflow yolu ile doğrulanır. Public bir gönderim uç noktası yoktur; yetkisiz dispatch istekleri 401 alır. Workflow üzerinde bildirim anahtarı veya kişisel veri bulunmaz.
 
 Aylık `.github/reminder-heartbeat.json` işaret güncellemesi, public depolarda 60 gün hareketsizlik nedeniyle cron'un durmasını önler. İş sadece bu dosyayı günceller. Workflow kapatılırsa veya GitHub Actions devre dışı bırakılırsa uygulama son zamanlayıcı denetiminin geciktiğini gösterir.
