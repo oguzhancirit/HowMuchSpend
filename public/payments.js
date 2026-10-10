@@ -1,5 +1,5 @@
-import {BANKS,CATEGORIES,CURRENCIES,parseAmount,today,shiftMonth} from './model.js?v=18';
-import {PAYMENT_KEY,emptyPayments,validatePayments,cardMonth,cardPayments,calendarCardSuggestions,monthlyHistory,spendingBreakdown,validMonth} from './payments-model.js?v=18';
+import {BANKS,CATEGORIES,CURRENCIES,parseAmount,today,shiftMonth} from './model.js?v=19';
+import {PAYMENT_KEY,emptyPayments,validatePayments,cardMonth,cardPayments,calendarCardSuggestions,monthlyHistory,spendingBreakdown,validMonth} from './payments-model.js?v=19';
 
 const number=n=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n/100);
 const moneyInput=(v,label)=>{if(/^0([,.]0{1,2})?$/.test(String(v).trim()))return 0;const n=parseAmount(v);if(n===null)throw Error(label+' için geçerli bir tutar gir (0 olabilir).');return n;};

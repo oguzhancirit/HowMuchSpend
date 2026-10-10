@@ -29,3 +29,14 @@ test('Validation rejects malformed targets, impossible dates, repeated records a
  for(const over of [{targetCents:0},{reserveCents:-1},{sharePercent:101},{endMonth:'2026-09'},{endMonth:'2036-10'},{horizonMonths:121},{currency:'GBP'}])assert.throws(()=>validateSavings(goal(over)));
  const g=goal();g.contributions=[{id:'dup',month:'2026-10',amountCents:1},{id:'dup',month:'2026-10',amountCents:2}];assert.throws(()=>validateSavings(g));g.contributions=[{id:'future',month:'2026-11',amountCents:100}];assert.throws(()=>sim(data(),g),/Gelecek/);
 });
+
+test('Monthly savings carries cash across years and subtracts this month’s contribution exactly once',async()=>{
+ const {monthlySavings,contributionOccurrences}=await import('../public/savings-model.js');const {totals}=await import('../public/model.js');
+ const g=goal({initialCents:100000});g.contributions=[{id:'dec',month:'2026-12',date:'2026-12-25',amountCents:340000},{id:'jan',month:'2027-01',date:'2027-01-05',amountCents:200000}];const p=monthlySavings(data(),g,'2027-01');assert.equal(p.carriedCents,440000);assert.equal(p.actualCents,640000);assert.equal(p.depositedCents,200000);assert.equal(p.recommendedCents,100000);const projected=contributionOccurrences(validateSavings(g),'2027-01'),t=totals([...occurrences(data(),'2027-01-01','2027-01-31'),...projected]);assert.equal(t.expense,1700000);assert.equal(t.net,1300000);assert.equal(t.pendingExpense,1500000);
+});
+test('Reset preserves historical paid transfers without refunding prior monthly expenses',async()=>{
+ const {monthlySavings,contributionOccurrences,savedBalance}=await import('../public/savings-model.js');const g=goal({initialCents:100000});g.contributions=[{id:'old',month:'2026-10',amountCents:300000},{id:'new',month:'2026-11',date:'2026-11-05',amountCents:200000}];g.resets=[{id:'reset',date:'2026-10-31',amountCents:400000}];const state=validateSavings(g);assert.equal(savedBalance(state,'2026-10'),0);assert.equal(monthlySavings(data(),state,'2026-11').carriedCents,0);assert.equal(monthlySavings(data(),state,'2026-11').actualCents,200000);assert.equal(contributionOccurrences(state,'2026-10')[0].amountCents,300000);assert.equal(contributionOccurrences(state,'2026-10')[0].paid,true);g.resets[0].amountCents=400001;assert.throws(()=>validateSavings(g),/birikimi aşamaz/);
+});
+test('Legacy goals migrate contributions and dates safely; malformed reset/date/currency records are rejected',async()=>{
+ const {contributionOccurrences}=await import('../public/savings-model.js');const g=goal();g.contributions=[{id:'old',month:'2026-10',amountCents:10000}];const s=validateSavings(g);assert.deepEqual(s.resets,[]);assert.equal(s.contributions[0].currency,'TRY');assert.equal(contributionOccurrences(s,'2026-10')[0].date,'2026-10-01');g.contributions[0].date='2026-11-01';assert.throws(()=>validateSavings(g));g.contributions[0].date='2026-10-01';g.contributions[0].currency='EUR';assert.throws(()=>validateSavings(g));
+});

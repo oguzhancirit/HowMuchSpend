@@ -11,12 +11,13 @@ import {createMotionController} from '../public/motion.js';
 
 const read=name=>fs.readFileSync(new URL('../public/'+name,import.meta.url),'utf8');
 const source=read('notifications.js').replace(/^export /gm,'')+'\nconst createRecoveryController=(()=>{'+read('recovery.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createRecoveryController;})();\nconst createPaymentsController=(()=>{'+read('payments.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createPaymentsController;})();\nconst createSavingsController=(()=>{'+read('savings.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createSavingsController;})();\n'+read('app.js').replace(/^import .*\n/gm,'');
-function fixture(){
+function fixture({savingsState}={}){
   const nodes=new Map(),listeners={};
   const node=selector=>{if(!nodes.has(selector))nodes.set(selector,{value:'',innerHTML:'',textContent:'',hidden:false,checked:false,open:false,dataset:{},content:'',classList:{add(){},remove(){},toggle(){}},setAttribute(){},addEventListener(){},reset(){},showModal(){this.open=true;},close(){this.open=false;},focus(){},querySelectorAll:()=>[]});return nodes.get(selector);};
   const entry=(id,type,currency,amount,title,category)=>({id,type,currency,amountCents:amount,title,category,bank:category==='card'?'akbank':'',notes:'',startDate:'2026-01-31',recurrence:'monthly',count:null,endDate:null,paidDates:id==='card'?['2026-01-31']:[],skips:[],overrides:{}});
   const ledger={schemaVersion:1,updatedAt:null,entries:[entry('card','expense','TRY',45900000,'Akbank eski kayıt','card'),entry('salary','income','TRY',10000000,'Maaş','salary'),entry('euro','income','EUR',100000,'Euro gelir','salary')]};
   const storage=new Map([['howmuchspend.data.v1',JSON.stringify(ledger)]]),original=storage.get('howmuchspend.data.v1');
+  if(savingsState)storage.set('howmuchspend.savings.v1',JSON.stringify(savingsState));
   const context=vm.createContext({...Model,...Recovery,...Payments,...Savings,dayStatus,createMotionController,URL,location:{hostname:'howmuchspend.ozicirit9.chatgpt.site',href:'https://howmuchspend.ozicirit9.chatgpt.site'},document:{querySelector:node,querySelectorAll:()=>[],getElementById:id=>nodes.get('#'+id),documentElement:{dataset:{}},addEventListener:(event,fn)=>(listeners[event]??=[]).push(fn)},window:{innerWidth:428,addEventListener(){},scrollTo(){}},navigator:{},Intl,Date,console,crypto:globalThis.crypto,structuredClone,setTimeout:()=>1,clearTimeout(){},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)}});
   vm.runInContext(source,context);
   const run=code=>vm.runInContext(code,context);
@@ -52,4 +53,12 @@ test('Settings keep reminders visible and motion preference writes no ledger or 
 
 test('Para Biriktir replaces Kurtuluş with a compact single-row navigation while preserving data',()=>{
  const f=fixture();f.run("view='savings';render()");assert.match(f.node('#main').innerHTML,/Hadi Para Biriktir/);assert.match(f.node('.bottom-nav').innerHTML,/data-view="savings"/);assert.doesNotMatch(f.node('.bottom-nav').innerHTML,/Kurtuluş|data-view="recovery"/);assert.equal(f.storage.get('howmuchspend.data.v1'),f.original);assert.equal(f.storage.has('howmuchspend.savings.v1'),false);
+});
+
+
+test('Paid savings appear once in monthly expense/net and day summary, never in pending queue or card debt',()=>{
+ const goal={name:'Tatil',currency:'TRY',targetCents:5000000,initialCents:0,reserveCents:0,sharePercent:20,startMonth:'2026-10',endMonth:null,horizonMonths:24};
+ const f=fixture({savingsState:{schemaVersion:1,goal,contributions:[{id:'deposit',month:'2026-10',date:'2026-10-10',amountCents:340000}],updatedAt:null}});
+ f.run("month='2026-10';selected='2026-10-10';view='calendar';render()");const t=f.run('sum(list())');assert.equal(t.expense,46240000);assert.equal(t.net,-36240000);assert.equal(t.paid,340000);assert.equal(t.pendingExpense,45900000);assert.match(f.node('#main').innerHTML,/3\.400 TL kumbaraya aktarıldı/);assert.match(f.node('#main').innerHTML,/Kumbaraya aktarıldı/);assert.doesNotMatch(f.run('upcoming()'),/Kumbaraya aktarıldı/);assert.doesNotMatch(f.run("row(list().find(e=>e.savings))"),/data-edit=|data-paid=/);assert.equal(f.storage.get('howmuchspend.data.v1'),f.original);
+ f.run("prefs.currency='EUR';render()");assert.equal(f.run('sum(list()).expense'),0);assert.doesNotMatch(f.node('#main').innerHTML,/kumbaraya aktarıldı/);
 });

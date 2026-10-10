@@ -26,3 +26,9 @@ test('Changing OS preference immediately cancels ongoing motion; payment feedbac
   const h=harness();h.controller.paid('other');assert.equal(h.calls.length,0);h.controller.paid('card@2026-10-10');assert.equal(h.calls.length,1);
   h.media.matches=true;h.listeners.change();assert.equal(h.calls[0].a.cancelled,true);h.controller.paid('card@2026-10-10');assert.equal(h.calls.length,1);
 });
+
+test('Savings confetti is finite, cleans up after completion, and respects reduced motion',async()=>{
+ const hosts=[],animations=[];const doc={body:{append:host=>hosts.push(host)},createElement:tag=>tag==='div'?{children:[],setAttribute(){},append(piece){this.children.push(piece)},remove(){this.removed=true}}:{style:{},animate(frames,options){const a={finished:Promise.resolve(),cancel(){}};animations.push({frames,options});return a}}};
+ const root={ownerDocument:doc,querySelectorAll:()=>[]},motion=createMotionController({root,media:{matches:false}});motion.celebrate();assert.equal(hosts.length,1);assert.equal(hosts[0].children.length,28);assert.equal(animations.length,28);assert.ok(animations.every(a=>a.options.duration<1500));await new Promise(resolve=>setImmediate(resolve));assert.equal(hosts[0].removed,true);
+ createMotionController({root,media:{matches:true}}).celebrate();createMotionController({root,getMode:()=> 'reduced'}).celebrate();assert.equal(hosts.length,1);
+});
