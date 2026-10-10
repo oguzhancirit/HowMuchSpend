@@ -12,6 +12,21 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 - Mevcut aylık özetler, banka görselleri ve takvim ölçüleri korunur.
 - Aylık, haftalık ve yıllık tekrarlar otomatik hesaplanır. Kısa aylar ayın son gününe sabitlenir.
 
+## Ödeme Takibi (v1.6.0)
+
+İşlemler sekmesinin yerini kart bazında aylık gerçek borç takibi alır. Alt menü: Takvim / Ödeme Takibi / + / Kurtuluş / Ayarlar. Takvimdeki bekleyenler aynı sayfada açılır; kayıtlar, ödeme durumları, banka görselleri ve hafta sonu gri hücreler korunur.
+
+- Önce banka, kart adı ve para birimi seçilir. Takvimdeki banka/para birimi grupları yalnızca öneridir; kullanıcı kartı eklemeden takip verisi yazılmaz.
+- Aylık hesap: devreden borç + yeni harcama (o ay yansıyan taksitler dahil) + ekstredeki gerçek faiz/vergi/ücret − ödenen = kalan. İlk başlangıç açıkça girilir; sonraki kayıtlı ay önceki ayın kalanını otomatik kullanabilir. Eksik ay ve bilinmeyen ödeme kaynağı sıfır borç olarak kabul edilmez.
+- Takvim bağlantısı banka/para birimi veya açıkça seçilen ödeme serileri üzerinden yapılır; yalnız kredi kartı kategorisindeki tamamlanan ödemeler alınır. Aynı bankadaki birden fazla kart için benzersiz seri bağlantıları gerekir. TL, EUR, USD karıştırılmaz veya kur tahmin edilmez.
+- Takvim gerçek ödeme zamanını saklamadığından ödemeler kayıt ayına atanır. Kısmi/geç ödeme ve banka mutabakatı için o ayın gerçek ödenen toplamı elle girilebilir; bu, takvim toplamını **değiştirir**, üzerine eklenmez. Takvim kayıtlarını değiştirmez.
+- Tamamlandı/bekliyor değişikliği otomatik bağlı aylarda ve sonraki devreden tutarlarda yeniden hesaplanır. Manuel başlangıç yeni mutabakat noktasıdır. Fazla ödeme ayrı kart alacağı olarak saklanır ve sonraki otomatik ayda bir kez mahsup edilir.
+- Kart detayı: toplam / ödenen / geçen aydan gelen / kalan, artış-azalış tutarı, orantılı Flow akışı, isteğe bağlı yeni harcama kategorileri, son 12 ay veya tam geçmiş. Eksik geçmiş boş işaretlenir; ödeme tutarından toplam borç üretilmez.
+- `howmuchspend.payments.v1` yalnız cihazda saklanan ayrı doğrulanmış veri alanıdır. Takvim, Kurtuluş ve bildirim verileri korunur. Bu ekranın kendi JSON yedek/geri yüklemesi vardır; eski takvim yedeği bunları içermez. Finansal tutarlar sunucuya gönderilmez.
+- Aylık harcama ve masraflar kullanıcı tarafından girilen gerçek ekstre kayıtlarıdır; faiz hesaplanmaz ve ödeme tavsiyesi verilmez. Borç değişimi önceki kayıtlı ayın kalanı veya ilk ayın başlangıcı ile karşılaştırılır.
+
+Validation: accounting/carry/credit/currency/deduplication tests and VM UI flows cover adding cards, monthly statements, historical tracking, privacy, drafts, import validation and unchanged existing storage. Browser and physical iPhone visual QA were unavailable in the managed environment.
+
 ## Kurtuluş
 
 Analiz sekmesi yerine kişisel kredi kartı borcu kapatma planı. TL bazında, cihaz içinde çalışır; plan/ekstreler sunucuya gönderilmez.
