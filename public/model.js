@@ -1,6 +1,8 @@
 export const SCHEMA = 1;
 export const CURRENCIES = { TRY: 'TL', EUR: 'EUR', USD: 'USD' };
-export const formatAmount = (cents,currency='TRY') => new Intl.NumberFormat('tr-TR',{minimumFractionDigits:cents%100?2:0,maximumFractionDigits:cents%100?2:0}).format(cents/100)+' '+CURRENCIES[currency];
+const amountFormatters=[0,2].map(digits=>new Intl.NumberFormat('tr-TR',{minimumFractionDigits:digits,maximumFractionDigits:digits}));
+export const formatNumber=cents=>amountFormatters[cents%100?1:0].format(cents/100);
+export const formatAmount = (cents,currency='TRY') => formatNumber(cents)+' '+CURRENCIES[currency];
 export const inCurrency = (items,currency='TRY') => items.filter(e=>(e.currency||'TRY')===currency);
 export const BANKS = {
   ziraat: { name: 'Ziraat', emoji: '🌾', short: 'Z', color: '#ee655b' },
@@ -153,4 +155,5 @@ export function demoData(month) {
   return d;
 }
 
-export const englishMonth=m=>new Intl.DateTimeFormat('en-US',{month:'long'}).format(new Date(m+'-01T12:00:00'));
+const englishMonthFormatter=new Intl.DateTimeFormat('en-US',{month:'long'});
+export const englishMonth=m=>englishMonthFormatter.format(new Date(m+'-01T12:00:00'));

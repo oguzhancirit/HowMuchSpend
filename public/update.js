@@ -1,6 +1,6 @@
 /* Independent of app rendering, so a failed app module cannot block updates. */
 (() => {
-  const BUILD=23, VERSION='1.7.5';
+  const BUILD=24, VERSION='1.8.0';
   let checking=null,registration=null,newBuild=false,reloading=false,lastCheck=0;
   const editing=()=>!!document.querySelector('dialog[open], [data-editing-savings], html[data-editing-savings-draft="true"], [data-editing-payments], html[data-editing-payments-draft="true"]');
   const status=text=>{const node=document.getElementById('update-status');if(node)node.textContent=text;};
@@ -18,6 +18,11 @@
       const release=await response.json();
       if(!Number.isInteger(release.build)||typeof release.version!=='string')throw new Error('Invalid release');
       if(registration)await registration.update().catch(()=>{});
+      // Cache-first navigation must wait for the new shell before reloading.
+      const installing=registration?.installing||registration?.waiting;
+      if(release.build>BUILD&&installing&&installing.state!=='activated'){
+        await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Update still installing')),20000);const changed=()=>{if(installing.state==='activated'){clearTimeout(timer);installing.removeEventListener('statechange',changed);resolve();}else if(installing.state==='redundant'){clearTimeout(timer);installing.removeEventListener('statechange',changed);reject(new Error('Update failed'));}};installing.addEventListener('statechange',changed);changed();});
+      }
       newBuild=release.build>BUILD;
       if(newBuild){status('Yeni sürüm hazır.');reload();}
       else status('Güncel · v'+VERSION);

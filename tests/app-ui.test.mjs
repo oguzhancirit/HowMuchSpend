@@ -62,3 +62,8 @@ test('Paid savings appear once in monthly expense/net and day summary, never in 
  f.run("month='2026-10';selected='2026-10-10';view='calendar';render()");const t=f.run('sum(list())');assert.equal(t.expense,46240000);assert.equal(t.net,-36240000);assert.equal(t.paid,340000);assert.equal(t.pendingExpense,45900000);assert.match(f.node('#main').innerHTML,/3\.400 TL kumbaraya aktarıldı/);assert.match(f.node('#main').innerHTML,/Kumbaraya aktarıldı/);assert.doesNotMatch(f.run('upcoming()'),/Kumbaraya aktarıldı/);assert.doesNotMatch(f.run("row(list().find(e=>e.savings))"),/data-edit=|data-paid=/);assert.equal(f.storage.get('howmuchspend.data.v1'),f.original);
  f.run("prefs.currency='EUR';render()");assert.equal(f.run('sum(list()).expense'),0);assert.doesNotMatch(f.node('#main').innerHTML,/kumbaraya aktarıldı/);
 });
+
+ test('Calendar expands monthly occurrences once per render and recalculates after an edit',()=>{
+ const f=fixture();f.run("month='2026-10';let expansions=0;const originalOccurrences=occurrences;occurrences=(...args)=>{expansions++;return originalOccurrences(...args)};render()");assert.equal(f.run('expansions'),1);
+ f.run("data.entries[0].amountCents=100000;render()");assert.equal(f.run('expansions'),2);assert.equal(f.run('sum(list()).expense'),100000);
+ });
