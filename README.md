@@ -12,6 +12,22 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 - Mevcut aylık özetler, banka görselleri ve takvim ölçüleri korunur.
 - Aylık, haftalık ve yıllık tekrarlar otomatik hesaplanır. Kısa aylar ayın son gününe sabitlenir.
 
+## Kurtuluş
+
+Analiz sekmesi yerine kişisel kredi kartı borcu kapatma planı. TL bazında, cihaz içinde çalışır; plan/ekstreler sunucuya gönderilmez.
+
+- 3 adımlı kart formu: ekstre tutarının asgari mi dönem borcu mu olduğu, gerçek kalan borç, ekstre ayı, bu ay yansıyan faiz + vergi, vergiler dahil aylık maliyet oranı, asgari oranı ve mevcut ödeme.
+- Oran bilinmiyorsa, masrafın uygulandığı devreden borç matrahı kullanıcı tarafından girilerek gözlenen aylık maliyet tahmin edilir. Güncel borç matrah yerine otomatik kullanılmaz.
+- Takvim bağlantısı: yalnızca bağlı, bekleyen TL kart ödemeleri diğer giderlerden çıkarılır. Yapılmış kart ödemeleri ve plan dışındaki kartlar giderde kalır; EUR/USD dönüştürülmez. Gelir/gider ve tampon kullanıcı tarafından onaylanır.
+- Önce tüm kartların asgarileri; sonra en yüksek maliyet veya en küçük borç önceliği. Asgari karşılanmıyorsa bütçe açığı gösterilir, eksik ödeme önerilmez.
+- İlk dönem zaten ekstreleşmiştir: mevcut masraf tekrar eklenmez. Sonraki dönemlerde faiz/vergi yalnız devreden anaparaya uygulanır; masrafa tekrar faiz işletilmez. Gelecek taksitler vadesinde eklenir. Yeni harcama sonraki dönemden başlar.
+- Sabit bütçe/maliyet/asgari oranı ile, zamanında ödeme varsayımı altında 120 aya kadar kuruş hassasiyetli aylık simülasyon. Kapanış yoksa tarih uydurulmaz. Günlük faiz, ödeme günü, işlem türü ve banka oranı değişimleri gerçek tutarı değiştirebilir.
+- Yalnızca asgari / mevcut sabit ödeme / seçilen plan karşılaştırması, 3 ay hedefi için gereken ödeme, bu ay kart dağılımı, gelecek maliyet ve ay ay tablo/CSV.
+- Her ekstre güncellemesi kart ve ay bazında maliyet geçmişini değiştirir; aynı ay iki kez toplanmaz. Yeni ayda bakiyeler güncellenmeli; takvimde ödendi işareti banka borcunu otomatik hesaplamaz.
+- `howmuchspend.recovery.v1` ayrı, doğrulanmış yerel veri alanıdır. Eski finansal kayıtlar korunur. Plan için ayrı JSON yedek/geri yükleme bulunur. Kurgusal 23.000 → 27.000 TL örneği gerçek veri olarak kaydedilmez.
+
+Finansal model kaynakları (10.10.2026 kontrolü): [TCMB azami faiz oranları](https://www.tcmb.gov.tr/wps/wcm/connect/TR/TCMB%2BTR/Main%2BMenu/Istatistikler/Bankacilik%2BVerileri/Kredi_Karti_Islemlerinde_Uygulanacak_Azami_Faiz_Oranlari), [Akbank faiz/ücretler](https://www.akbank.com/urun-ve-hizmet-ucretleri). Resmi üst sınır banka/vergiler dahil kişisel oran olarak otomatik seçilmez; ekstre esas alınır.
+
 ## iPhone bildirimleri
 
 1. iOS 16.4 veya üstünde, uygulamayı Safari'den Ana Ekrana Ekle.
