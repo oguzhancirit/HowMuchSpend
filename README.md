@@ -18,7 +18,7 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 2. **Mevcut ana ekran simgesinden** gir. Ayarlar → Bildirimler → Bildirimleri aç.
 3. iOS izin penceresinde İzin Ver'i seç, ardından Test bildirimi'ne dokun.
 
-Varsayılan: ödeme tarihinden 1 gün önce, Türkiye saatiyle 09:00 sonrası. 0/1/3/7 gün seçilebilir. Aynı sistem beklenen gelirleri de hatırlatır. GitHub Actions saatlik kontrolü nedeniyle gönderim 09:00–10:00 arasında, altyapı yoğunluğunda daha geç olabilir; kesin dakika garantisi yoktur. GitHub'daki **Actions → Payment reminders** otomatik gönderimin durumunu gösterir.
+Varsayılan: ödeme tarihinden 1 gün önce, Türkiye saatiyle 09:00 sonrası. 0/1/3/7 gün seçilebilir. Aynı sistem beklenen gelirleri de hatırlatır. Sites'e bağlı saatlik görev zamanı gelen hatırlatmaları kontrol eder. Gönderim 09:00 sonrası gerçekleşir; kesin dakika garantisi yoktur.
 
 Ödenen, alınan, silinen ve atlanan kayıtlar eşitleme tamamlandıktan sonra bildirimden çıkarılır. Çevrimdışı değişiklikler bağlantı gelince tekrar gönderilir; eşitlenene kadar sunucu önceki durumla çalışır ve uygulama uyarı gösterir. Bildirim geldiğinde kayda dokunarak ilgili gün ve işlemi açabilirsin.
 
@@ -38,13 +38,13 @@ Ana ekran uygulamasını silme veya tarayıcı verilerini temizleme: bu işlemle
 
 ## Otomatik gönderim
 
-**Kurulum durumu:** Sites, dış sunuculara ChatGPT oturum kapısı uyguluyor (doğrulanan HTTP 401). Otomatik cron, servis erişimi yapılandırılana kadar pasif bırakıldı. Kullanıcının açık talebiyle Sites bypass token oluşturulmalı; yalnızca GitHub repository secret `SITES_SERVICE_TOKEN` içinde saklanmalı. Script bu anahtarı sadece sabit Site adresine `OAI-Sites-Authorization` başlığıyla gönderir, ayrıca OIDC yetkisini doğrulatır. Ardından workflow içindeki saatlik schedule etkinleştirilip manuel çalıştırma ve `push_state.last_dispatch` okunarak doğrulanmalı. İzin ve test bildirimleri, uygulama sahibinin normal oturumunda kullanılabilir.
+Sites'e bağlı saatlik görev, mevcut owner-private platform erişimini kullanır; GitHub'a servis anahtarı eklenmez. `/api/push/private-dispatch` yalnızca `SITES_PRIVATE_SCHEDULER=1` ile etkinleşir. Sites özel erişim kapısı yetkilendirmeyi Worker'dan önce uygular. Görev her çalışmada mevcut erişim politikasını doğrular; owner-private değilse işlem yapmaz. **Site paylaşımını değiştirmeden önce bu entegrasyonu ve görevi kapat.** `/api/push/private-test`, aynı özel erişim sınırında etkin cihazlara gerçek Web Push testi gönderir.
 
-`.github/workflows/payment-reminders.yml` saatlik çalışır. GitHub'ın kısa ömürlü OIDC JWT'si sunucuda imza, audience, repository ID, main branch ve tam workflow yolu ile doğrulanır. Public bir gönderim uç noktası yoktur; yetkisiz dispatch istekleri 401 alır. Workflow üzerinde bildirim anahtarı veya kişisel veri bulunmaz.
+`push_state.last_dispatch` son kontrol zamanıdır. Üç saati geçen gecikme uygulamada gösterilir. `last_test_result` sadece hata aşaması/sağlayıcı kodu içerir; abonelik adresleri, anahtarlar veya finansal veri içermez. Başarısız test 15 saniye sonra, başarılı test 60 saniye sonra tekrar denenebilir.
 
-Aylık `.github/reminder-heartbeat.json` işaret güncellemesi, public depolarda 60 gün hareketsizlik nedeniyle cron'un durmasını önler. İş sadece bu dosyayı günceller. Workflow kapatılırsa veya GitHub Actions devre dışı bırakılırsa uygulama son zamanlayıcı denetiminin geciktiğini gösterir.
+Eski GitHub OIDC endpoint'i ayrı yetki kontrolünü korur; GitHub workflow saatlik cron'u kapalıdır. Sites görevine ek bir GitHub zamanlayıcısı kurulmaz.
 
-Sites runtime değişkenleri: `VAPID_PRIVATE_JWK` (secret), `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `SCHEDULER_REPOSITORY`, `SCHEDULER_REPOSITORY_ID`. Özel VAPID anahtarı depoda veya istemcide bulunmaz. Anahtar değişirse cihazların yeniden abone olması gerekir.
+Sites runtime değişkenleri: `VAPID_PRIVATE_JWK` (secret), `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `SCHEDULER_REPOSITORY`, `SCHEDULER_REPOSITORY_ID`, `SITES_PRIVATE_SCHEDULER`. Özel VAPID anahtarı depoda veya istemcide bulunmaz. Anahtar değişirse cihazların yeniden abone olması gerekir.
 
 ## Geliştirme
 

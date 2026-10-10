@@ -12,6 +12,29 @@ const tokenOf=r=>r.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/
 const ready=env=>!!env.DB&&!!env.VAPID_PRIVATE_JWK&&!!env.VAPID_PUBLIC_KEY&&!!env.VAPID_SUBJECT;
 async function status(env,id){const device=await env.DB.prepare('SELECT enabled, updated_at FROM push_devices WHERE id = ?').bind(id).first();const heartbeat=await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first();return {exists:!!device,enabled:!!device?.enabled,syncedAt:device?.updated_at||null,schedulerStale:!heartbeat||Date.now()-Number(heartbeat.value)>3*3600000};}
 async function bodyOf(request){const size=Number(request.headers.get('Content-Length')||0);if(size>2*1024*1024)throw new Error('Hatırlatma verisi çok büyük.');const text=await request.text();if(text.length>2*1024*1024)throw new Error('Hatırlatma verisi çok büyük.');return JSON.parse(text);}
+async function recordTestResult(env,id,result){
+  // Diagnostics never contain subscription URLs, cryptographic keys or financial data.
+  const value={at:Date.now(),device:id.slice(0,8),...result};
+  await env.DB.prepare("INSERT INTO push_state (key,value) VALUES ('last_test_result',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(value)).run();
+  if(!result.ok)console.warn('push_test_failed',value);
+}
+async function testDevice(env,id){
+  const now=Date.now();const row=await env.DB.prepare('SELECT * FROM push_devices WHERE id = ? AND enabled = 1').bind(id).first();if(!row)return json({error:'Önce bildirimleri aç.'},404);
+      const claim=await env.DB.prepare('UPDATE push_devices SET last_test_at = ? WHERE id = ? AND last_test_at < ?').bind(now,id,now-60000).run();if(!claim.meta.changes)return json({error:'Test için bir dakika bekle.'},429);
+      try{
+        const r=await Push.sendPush(JSON.parse(row.subscription),{title:'HowMuchSpend',body:'Test bildirimi. Ödeme hatırlatmaların bu cihazda görünecek.',tag:'howmuchspend-test',url:'./'},env);
+        if(!r.ok){const reason=await Push.providerReason(r);if([404,410].includes(r.status))await env.DB.prepare('UPDATE push_devices SET enabled = 0 WHERE id = ?').bind(id).run();
+          await recordTestResult(env,id,{ok:false,stage:'provider',providerStatus:r.status,reason});
+          await env.DB.prepare('UPDATE push_devices SET last_test_at = ? WHERE id = ?').bind(now-45000,id).run();
+          return json({error:[404,410].includes(r.status)?'Abonelik sona ermiş. Bildirimleri kapatıp yeniden aç.':'Apple/bildirim servisi gönderimi reddetti: '+r.status+' · '+reason+'. Bu bir sunucu gönderim hatasıdır.'},502);
+        }
+        await recordTestResult(env,id,{ok:true,stage:'provider',providerStatus:r.status});return json({ok:true});
+      }catch(e){const stage=e.stage||'server',causeName=/^[A-Za-z]{1,50}$/.test(e.causeName||'')?e.causeName:'Error';
+        await recordTestResult(env,id,{ok:false,stage,reason:causeName});
+        await env.DB.prepare('UPDATE push_devices SET last_test_at = ? WHERE id = ?').bind(now-45000,id).run();
+        return json({error:'Test gönderilemedi: '+stage+' · '+causeName+'. Telefon iznini tekrar açmana gerek yok.'},502);
+      }
+}
 export async function dispatch(env,now=Date.now()){
   const {results}=await env.DB.prepare('SELECT * FROM push_devices WHERE enabled = 1 ORDER BY updated_at DESC LIMIT 500').all();
   let sent=0,failed=0;
@@ -55,6 +78,19 @@ export async function fetchHandler(request,env){
       if(!await Push.verifySchedulerJWT(bearer,url.origin,env))return json({error:'Yetkisiz zamanlayıcı.'},401);
       const result=await dispatch(env);return json(result,result.failed?503:200);
     }
+    // This shared updater is enabled only on the confirmed owner-private Site.
+    // Sites validates/consumes its service credential before reaching this Worker.
+    // Disable this integration before changing the Site's audience.
+    if(['/api/push/private-dispatch','/api/push/private-test'].includes(url.pathname)){
+      if(env.SITES_PRIVATE_SCHEDULER!=='1')return json({error:'Özel zamanlayıcı etkin değil.'},403);
+      if(request.method!=='POST')return json({error:'POST gerekli.'},405);
+      if(request.headers.has('Origin')&&request.headers.get('Origin')!==url.origin)return json({error:'Geçersiz kaynak.'},403);
+      if(url.pathname==='/api/push/private-dispatch'){const result=await dispatch(env);return json(result,result.failed?503:200);}
+      const {results}=await env.DB.prepare('SELECT id FROM push_devices WHERE enabled = 1 ORDER BY updated_at DESC LIMIT 20').all();
+      if(!results.length)return json({error:'Etkin bildirim aboneliği yok.'},404);
+      const resultsOut=[];for(const row of results){const response=await testDevice(env,row.id);resultsOut.push({status:response.status,...await response.json()});}
+      return json({results:resultsOut},resultsOut.every(r=>r.ok)?200:502);
+    }
     if(request.method!=='GET'&&request.headers.get('Origin')!==url.origin)return json({error:'Geçersiz kaynak.'},403);
     const token=tokenOf(request);if(!token)return json({error:'Cihaz kimliği eksik.'},401);const id=await Push.hash(token);
     if(url.pathname==='/api/push/device'){
@@ -72,11 +108,7 @@ export async function fetchHandler(request,env){
         }catch(e){return json({error:e.message||'Hatırlatma kaydedilemedi.'},400);}
       }
     }
-    if(url.pathname==='/api/push/test'&&request.method==='POST'){
-      const now=Date.now();const row=await env.DB.prepare('SELECT * FROM push_devices WHERE id = ? AND enabled = 1').bind(id).first();if(!row)return json({error:'Önce bildirimleri aç.'},404);
-      const claim=await env.DB.prepare('UPDATE push_devices SET last_test_at = ? WHERE id = ? AND last_test_at < ?').bind(now,id,now-60000).run();if(!claim.meta.changes)return json({error:'Test için bir dakika bekle.'},429);
-      try{const r=await Push.sendPush(JSON.parse(row.subscription),{title:'HowMuchSpend',body:'Test bildirimi. Ödeme hatırlatmaların bu cihazda görünecek.',tag:'howmuchspend-test',url:'./'},env);if(!r.ok){if([404,410].includes(r.status))await env.DB.prepare('UPDATE push_devices SET enabled = 0 WHERE id = ?').bind(id).run();return json({error:'Bildirim servisi kabul etmedi ('+r.status+'). İzni kontrol edip yeniden aç.'},502);}return json({ok:true});}catch{return json({error:'Bildirim servisine ulaşılamadı.'},502);}
-    }
+    if(url.pathname==='/api/push/test'&&request.method==='POST')return testDevice(env,id);
     return json({error:'Bulunamadı.'},404);
   }
   return serveAsset(request,url);

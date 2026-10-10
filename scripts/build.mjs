@@ -7,7 +7,7 @@ await collect('public');
 const model=(await readFile('public/model.js','utf8')).replace(/^export /gm,'');
 const push=(await readFile('worker/webpush.js','utf8')).replace(/^export /gm,'');
 const server=(await readFile('worker/index.js','utf8')).replace(/^import .*\n/gm,'');
-const bundled=`globalThis.__HMS_ASSETS=${JSON.stringify(assets)};\nconst Model=(()=>{${model}\nreturn {occurrences,validateData,addDays,formatAmount,BANKS};})();\nconst Push=(()=>{${push}\nreturn {hash,unb64,validateSubscription,sendPush,verifySchedulerJWT};})();\n${server}`;
+const bundled=`globalThis.__HMS_ASSETS=${JSON.stringify(assets)};\nconst Model=(()=>{${model}\nreturn {occurrences,validateData,addDays,formatAmount,BANKS};})();\nconst Push=(()=>{${push}\nreturn {hash,unb64,validateSubscription,sendPush,providerReason,verifySchedulerJWT};})();\n${server}`;
 await rm('dist',{recursive:true,force:true});await mkdir('dist/server',{recursive:true});await mkdir('dist/.openai',{recursive:true});
 await writeFile('dist/server/index.js',bundled);await cp('.openai/hosting.json','dist/.openai/hosting.json');await cp('drizzle','dist/.openai/drizzle',{recursive:true});
 console.log(`Built Worker ESM: ${Object.keys(assets).length} embedded assets, ${Buffer.byteLength(bundled)} bytes`);

@@ -45,8 +45,16 @@ export async function validateSubscription(value){
   return {endpoint:url.href,keys:{p256dh:value.keys.p256dh,auth:value.keys.auth}};
 }
 export async function sendPush(subscription,payload,env){
-  const body=await encryptPayload(payload,subscription.keys);
-  return fetch(subscription.endpoint,{method:'POST',redirect:'error',headers:{Authorization:await vapidAuthorization(subscription.endpoint,env),'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:'3600',Urgency:'normal'},body,signal:AbortSignal.timeout(15000)});
+  let body,authorization;
+  try{body=await encryptPayload(payload,subscription.keys)}catch(e){throw Object.assign(new Error('Push encryption failed'),{stage:'encryption',causeName:e.name});}
+  try{authorization=await vapidAuthorization(subscription.endpoint,env)}catch(e){throw Object.assign(new Error('Push signing failed'),{stage:'signing',causeName:e.name});}
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+  try{return await fetch(subscription.endpoint,{method:'POST',redirect:'error',headers:{Authorization:authorization,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:'3600',Urgency:'normal'},body,signal:controller.signal});}
+  catch(e){throw Object.assign(new Error('Push network failed'),{stage:'network',causeName:e.name});}
+  finally{clearTimeout(timer);}
+}
+export async function providerReason(response){
+  try{const value=await response.json();return typeof value.reason==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(value.reason)?value.reason:'ProviderRejected';}catch{return 'ProviderRejected';}
 }
 let jwksCache=null,jwksAt=0;
 export async function verifySchedulerJWT(token,origin,env,now=Date.now()){

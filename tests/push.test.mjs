@@ -55,3 +55,20 @@ test('Scheduler OIDC requires signed token from exact repository, workflow, main
   async function jwt(changes={}){const input=b64(new TextEncoder().encode(JSON.stringify({alg:'RS256',kid:'test-key'})))+'.'+b64(new TextEncoder().encode(JSON.stringify({...claims,...changes})));return input+'.'+b64(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',rsa.privateKey,new TextEncoder().encode(input)));}
   const original=globalThis.fetch;globalThis.fetch=async()=>Response.json({keys:[jwk]});try{assert.equal(await verifySchedulerJWT(await jwt(),'https://test.local',env,now),true);for(const change of [{aud:'https://evil.test'},{repository:'attacker/HowMuchSpend'},{repository_id:'111'},{ref:'refs/pull/1/merge'},{workflow_ref:'wrong'},{exp:s-1},{event_name:'pull_request'}])assert.equal(await verifySchedulerJWT(await jwt(change),'https://test.local',env,now),false);assert.equal(await verifySchedulerJWT((await jwt()).slice(0,-10)+'abcdefghij','https://test.local',env,now),false);}finally{globalThis.fetch=original;}
 });
+test('Private updater is off by default, rejects cross-origin, and records sanitized provider failure',async()=>{
+  const {env,subscription}=await fixture(),id=await hash('d'.repeat(64));
+  await env.DB.prepare('INSERT INTO push_devices (id,subscription,rules,lead_days,details,enabled,updated_at) VALUES (?,?,?,?,?,1,?)').bind(id,JSON.stringify(subscription),JSON.stringify(rules),1,0,Date.now()).run();
+  const request=(path,origin)=>new Request('https://test.local/api/push/'+path,{method:'POST',headers:origin?{Origin:origin}:{}});
+  assert.equal((await fetchHandler(request('private-dispatch'),env)).status,403);
+  env.SITES_PRIVATE_SCHEDULER='1';assert.equal((await fetchHandler(request('private-dispatch','https://evil.test'),env)).status,403);
+  const original=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;return Response.json({reason:'BadJwtToken',secret:'DO_NOT_STORE'},{status:403})};
+  try{
+    assert.equal((await fetchHandler(request('private-test'),env)).status,502);
+    const stored=env.DB.sql.prepare("SELECT value FROM push_state WHERE key='last_test_result'").get().value;
+    assert.equal(JSON.parse(stored).reason,'BadJwtToken');assert.doesNotMatch(stored,/DO_NOT_STORE|web.push.apple.com|p256dh/);
+    assert.equal((await fetchHandler(request('private-test'),env)).status,502);assert.equal(calls,1);
+    env.DB.sql.exec('UPDATE push_devices SET last_test_at=0');globalThis.fetch=async()=>new Response(null,{status:201});
+    assert.equal((await fetchHandler(request('private-test'),env)).status,200);
+    assert.equal(JSON.parse(env.DB.sql.prepare("SELECT value FROM push_state WHERE key='last_test_result'").get().value).ok,true);
+  }finally{globalThis.fetch=original;}
+});

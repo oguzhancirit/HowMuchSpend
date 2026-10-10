@@ -24,7 +24,7 @@ export function createPushController({getData,canSync,esc,toast,onChange}) {
   }
   const registration=()=>navigator.serviceWorker.ready;
   const publicBytes=key=>Uint8Array.from(atob(key.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(key.length/4)*4,'=')),c=>c.charCodeAt(0));
-  async function loadConfig(){if(!config)config=await api('config');return config;}
+  async function loadConfig(){config=await api('config');return config;}
   function panel(){
     const installed=ios()&&!standalone(),blocked=supported()&&Notification.permission==='denied';
     const status=busy?'İşleniyor…':saved.active?(error?'Eşitleme gerekli':'Açık'):'Kapalı';

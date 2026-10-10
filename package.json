@@ -1,6 +1,6 @@
 {
   "name": "howmuchspend",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "private": true,
   "type": "module",
   "description": "A local-first income and expense calendar, designed for iPhone.",
