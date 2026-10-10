@@ -81,7 +81,7 @@ Gerçek iPhone'a teslimat, cihaz sahibinin bildirim izni vermesi ve Test bildiri
 
 ## UX/UI — 1.5.0 (10 October 2026)
 
-The refresh covers the calendar, transaction form, records, recovery planner and settings. The established palette, original calendar cell dimensions, income/expense summaries, bank artwork and central add button are retained. Space Grotesk is served locally and cached for offline use.
+The refresh covers the calendar, transaction form, records, recovery planner and settings. The established palette, original calendar cell dimensions, income/expense summaries, bank artwork and central add button are retained. In 1.5.1, the previous application font stack is restored. Calendar day numbers use the iPhone system font with larger numerals, quieter weekends and a compact today circle, based on the supplied iPhone Calendar reference.
 
 | Reference reviewed | Observed pattern | Application here |
 | --- | --- | --- |
