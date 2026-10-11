@@ -14,7 +14,18 @@ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,header
 const tokenOf=r=>r.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
 const ready=env=>!!env.DB&&!!env.VAPID_PRIVATE_JWK&&!!env.VAPID_PUBLIC_KEY&&!!env.VAPID_SUBJECT;
 async function status(env,id){const device=await env.DB.prepare('SELECT enabled, updated_at FROM push_devices WHERE id = ?').bind(id).first();const heartbeat=await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first();return {exists:!!device,enabled:!!device?.enabled,syncedAt:device?.updated_at||null,schedulerStale:!heartbeat||Date.now()-Number(heartbeat.value)>18*3600000};}
-async function bodyOf(request){const size=Number(request.headers.get('Content-Length')||0);if(size>2*1024*1024)throw new Error('Hatırlatma verisi çok büyük.');const text=await request.text();if(text.length>2*1024*1024)throw new Error('Hatırlatma verisi çok büyük.');return JSON.parse(text);}
+const BODY_LIMIT=2*1024*1024;
+const requestError=(message,status)=>Object.assign(new Error(message),{status});
+async function bodyOf(request){
+  if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type')||''))throw requestError('JSON gerekli.',415);
+  const size=Number(request.headers.get('Content-Length')||0);
+  if(size>BODY_LIMIT)throw requestError('Hatırlatma verisi çok büyük.',413);
+  const reader=request.body?.getReader();if(!reader)throw requestError('JSON gövdesi gerekli.',400);
+  const chunks=[];let total=0;
+  try{while(true){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>BODY_LIMIT){await reader.cancel();throw requestError('Hatırlatma verisi çok büyük.',413);}chunks.push(value);}}finally{reader.releaseLock();}
+  const bytes=new Uint8Array(total);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+  try{const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));if(!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw requestError('Geçersiz JSON.',400);}
+}
 async function recordTestResult(env,id,result){
   // Diagnostics never contain subscription URLs, cryptographic keys or financial data.
   const value={at:Date.now(),device:id.slice(0,8),...result};
@@ -109,7 +120,7 @@ export async function fetchHandler(request,env){
           const subscription=await Push.validateSubscription(value.subscription),now=Date.now();
           await env.DB.prepare(`INSERT INTO push_devices (id, subscription, rules, lead_days, details, enabled, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?) ON CONFLICT(id) DO UPDATE SET subscription = excluded.subscription, rules = excluded.rules, lead_days = excluded.lead_days, details = excluded.details, enabled = 1, updated_at = excluded.updated_at`).bind(id,JSON.stringify(subscription),JSON.stringify(rules),value.leadDays,value.details?1:0,now).run();
           return json(await status(env,id));
-        }catch(e){return json({error:e.message||'Hatırlatma kaydedilemedi.'},400);}
+        }catch(e){return json({error:e.message||'Hatırlatma kaydedilemedi.'},[400,413,415].includes(e.status)?e.status:400);}
       }
     }
     if(url.pathname==='/api/push/test'&&request.method==='POST')return testDevice(env,id);
@@ -125,4 +136,13 @@ export function serveAsset(request,url){
   if(path==='/sw.js')headers['Service-Worker-Allowed']='/';
   return new Response(request.method==='HEAD'?null:Push.unb64(asset.body),{headers});
 }
-export default {async fetch(request,env){try{return await fetchHandler(request,env)}catch{return json({error:'Sunucu geçici olarak yanıt veremiyor.'},500);}},async scheduled(controller,env,ctx){ctx.waitUntil(dispatch(env));}};
+function secureResponse(response){
+  const headers=new Headers(response.headers);
+  headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+  headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','no-referrer');
+  headers.set('Strict-Transport-Security','max-age=31536000');
+  headers.set('Permissions-Policy','camera=(), microphone=(), geolocation=()');
+  headers.set('X-Content-Type-Options','nosniff');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+export default {async fetch(request,env){try{return secureResponse(await fetchHandler(request,env))}catch{return secureResponse(json({error:'Sunucu geçici olarak yanıt veremiyor.'},500));}},async scheduled(controller,env,ctx){ctx.waitUntil(dispatch(env));}};

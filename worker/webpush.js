@@ -39,6 +39,8 @@ export async function validateSubscription(value){
   const allowed=url.hostname==='web.push.apple.com'||url.hostname==='fcm.googleapis.com'||url.hostname==='updates.push.services.mozilla.com'||url.hostname==='updates-autopush.stage.mozaws.net';
   if(url.protocol!=='https:'||!allowed||url.port||url.username||url.password||url.hash)throw new Error('Desteklenmeyen bildirim servisi.');
   if(typeof value.keys?.p256dh!=='string'||typeof value.keys?.auth!=='string')throw new Error('Abonelik anahtarları eksik.');
+  // Bound encoded input before allocating buffers or invoking cryptography.
+  if(!/^[A-Za-z0-9_-]{87}=?$/.test(value.keys.p256dh)||!/^[A-Za-z0-9_-]{22}(?:==)?$/.test(value.keys.auth))throw new Error('Geçersiz abonelik anahtarları.');
   const publicKey=unb64(value.keys.p256dh),auth=unb64(value.keys.auth);
   if(publicKey.length!==65||publicKey[0]!==4||auth.length!==16)throw new Error('Geçersiz abonelik anahtarları.');
   await crypto.subtle.importKey('raw',publicKey,{name:'ECDH',namedCurve:'P-256'},false,[]);
