@@ -4,6 +4,14 @@ iPhone için Türkçe gelir, gider ve tekrar eden ödeme takvimi.
 
 Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 
+## Onaylanan ürün iyileştirmeleri (v1.8.3)
+
+- Yeni gelir/gider kayıtları tarihinden bağımsız bekleyen başlar. “Ödendi/Alındı” kullanıcı tarafından seçilir; tarih değişikliği seçimi değiştirmez. Eski ödeme durumları korunur.
+- Kart ay formunda canlı borç denklemi ve Elle/Takvim/Önceki ay kaynakları gösterilir. Mahsup ve borca işlenen ödeme, fazla ödemeyi yanlış negatif borç olarak göstermeden hesaplanır.
+- Kartın Borç akışı içindeki kapalı “Borç neden arttı/azaldı/değişmedi?” bölümü, önceki kalan ile farkın harcama, gerçek maliyet, ödeme, devreden düzeltmesi ve kart alacağına dağılımını açıklar. Takvim ödemesi detayları yalnız bu bölüm açıldığında görünür; özet dört kayıtla sınırlıdır. Eksik ay için açıklama üretilmez.
+- Kumbara önerisi “Planına göre bu ay önerilen” olarak etiketlenir; planlanan netin banka bakiyesi olmadığı açıklanır. Hesap ve gerçek aktarım davranışı değişmez.
+- [Doğrulama ve yerel performans karşılaştırması](docs/product-improvements-v1.8.3.md). Takvim düzeni, font, renkler, banka görselleri, özet ve bildirim saatleri korunur.
+
 ## Kullanım
 
 - `+` ile gelir/gider ekle; TL, EUR ve USD ayrı toplamlarla izlenir.

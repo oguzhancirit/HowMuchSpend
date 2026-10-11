@@ -13,7 +13,7 @@ const read=name=>fs.readFileSync(new URL('../public/'+name,import.meta.url),'utf
 const source=read('notifications.js').replace(/^export /gm,'')+'\nconst createRecoveryController=(()=>{'+read('recovery.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createRecoveryController;})();\nconst createPaymentsController=(()=>{'+read('payments.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createPaymentsController;})();\nconst createSavingsController=(()=>{'+read('savings.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createSavingsController;})();\n'+read('app.js').replace(/^import .*\n/gm,'');
 function fixture({savingsState}={}){
   const nodes=new Map(),listeners={};
-  const node=selector=>{if(!nodes.has(selector))nodes.set(selector,{value:'',innerHTML:'',textContent:'',hidden:false,checked:false,open:false,dataset:{},content:'',classList:{add(){},remove(){},toggle(){}},setAttribute(){},addEventListener(){},reset(){},showModal(){this.open=true;},close(){this.open=false;},focus(){},querySelectorAll:()=>[]});return nodes.get(selector);};
+  const node=selector=>{if(!nodes.has(selector))nodes.set(selector,{value:'',innerHTML:'',textContent:'',hidden:false,checked:false,open:false,dataset:{},content:'',listeners:{},classList:{add(){},remove(){},toggle(){}},setAttribute(){},addEventListener(name,fn){(this.listeners[name]??=[]).push(fn);},reset(){},showModal(){this.open=true;},close(){this.open=false;},focus(){},querySelectorAll:()=>[]});return nodes.get(selector);};
   const entry=(id,type,currency,amount,title,category)=>({id,type,currency,amountCents:amount,title,category,bank:category==='card'?'akbank':'',notes:'',startDate:'2026-01-31',recurrence:'monthly',count:null,endDate:null,paidDates:id==='card'?['2026-01-31']:[],skips:[],overrides:{}});
   const ledger={schemaVersion:1,updatedAt:null,entries:[entry('card','expense','TRY',45900000,'Akbank eski kayıt','card'),entry('salary','income','TRY',10000000,'Maaş','salary'),entry('euro','income','EUR',100000,'Euro gelir','salary')]};
   const storage=new Map([['howmuchspend.data.v1',JSON.stringify(ledger)]]),original=storage.get('howmuchspend.data.v1');
@@ -44,6 +44,21 @@ test('Compact entry form saves exact EUR cents and displays a preview while keep
   for(const [key,value] of Object.entries({amount:'1.250,50','entry-name':'Yeni euro ödeme','entry-date':'2026-10-10',category:'card',repeat:'none',notes:''}))f.node('#'+key).value=value;
   f.node('#paid').checked=false;f.run('syncEntryPreview()');assert.match(f.node('#entry-preview').textContent,/1\.250,50 EUR/);f.run('saveForm({preventDefault(){}})');
   const saved=JSON.parse(f.storage.get('howmuchspend.data.v1'));assert.equal(saved.entries.length,4);assert.equal(saved.entries.at(-1).amountCents,125050);assert.equal(saved.entries.at(-1).currency,'EUR');assert.deepEqual(saved.entries[0].paidDates,['2026-01-31']);assert.equal(f.node('#entry-dialog').open,false);
+});
+test('New dated payments and income remain pending until explicitly completed; date shortcuts preserve the choice',()=>{
+  for(const type of ['expense','income'])for(const date of [Model.addDays(Model.today(),-1),Model.today(),Model.addDays(Model.today(),1)]){
+    const f=fixture();f.run(`selected=${JSON.stringify(date)};openEntry(null,${JSON.stringify(type)})`);
+    assert.equal(f.node('#paid').checked,false);
+    for(const [key,value]of Object.entries({amount:'1000','entry-name':'Planlı kayıt',category:type==='income'?'salary':'card',repeat:'none',notes:''}))f.node('#'+key).value=value;
+    f.run('syncEntryPreview()');assert.match(f.node('#entry-preview').textContent,/Bekliyor/);
+    f.run('saveForm({preventDefault(){}})');const saved=JSON.parse(f.storage.get('howmuchspend.data.v1'));
+    assert.deepEqual(saved.entries.at(-1).paidDates,[]);assert.deepEqual(saved.entries[0].paidDates,['2026-01-31']);
+  }
+  const f=fixture();f.run('openEntry()');f.node('#paid').checked=true;f.node('#amount').value='1000';
+  f.click({quickDate:'1'});assert.equal(f.node('#paid').checked,true);
+  f.node('#entry-date').value=Model.addDays(Model.today(),-5);for(const fn of f.node('#entry-date').listeners.change)fn();assert.equal(f.node('#paid').checked,true);assert.match(f.node('#entry-preview').textContent,/Ödendi/);
+  f.node('#paid').checked=false;f.click({quickDate:'0'});assert.equal(f.node('#paid').checked,false);assert.match(f.node('#entry-preview').textContent,/Bekliyor/);
+  assert.equal(f.storage.get('howmuchspend.data.v1'),f.original);
 });
 test('Settings keep reminders visible and motion preference writes no ledger or push data',()=>{
   const f=fixture();f.run("view='settings';render()");assert.match(f.node('#main').innerHTML,/notification-panel/);assert.match(f.node('#main').innerHTML,/08:30 · 12:00 · 17:00/);assert.match(f.node('#main').innerHTML,/motion-mode/);

@@ -1,4 +1,4 @@
-import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=26';
+import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=27';
 
 export const PAYMENT_KEY='howmuchspend.payments.v1';
 const MAX=1e12;
@@ -63,7 +63,7 @@ function calculateMonths(card,data,month){
     const closingCents=known?Math.max(0,totalCents-paidCents):null;
     const creditCents=known?Math.max(0,openingCreditCents-grossCents)+Math.max(0,paidCents-totalCents):null;
     const baseline=previous?.known?previous.closingCents:openingCents;
-    results.set(record.month,{...record,known,openingKnown,paidKnown,openingCents,openingCreditCents,grossCents,creditAppliedCents,totalCents,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,pendingCents:payment.pendingCents,deltaCents:known?closingCents-baseline:null,baseline:previous?.known?'previous':'opening',hasRecord:true});
+    results.set(record.month,{...record,known,openingKnown,paidKnown,openingCents,openingCreditCents,grossCents,creditAppliedCents,totalCents,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,pendingCents:payment.pendingCents,deltaCents:known?closingCents-baseline:null,baselineCents:known?baseline:null,baseline:previous?.known?'previous':'opening',hasRecord:true});
   }
   return results;
 }
@@ -72,6 +72,21 @@ export function cardMonth(card,data,month){
   if(results.has(month))return results.get(month);
   const payment=cardPayments(card,data,month);
   return {month,known:false,hasRecord:false,paidCents:payment.paidCents,pendingCents:payment.pendingCents};
+}
+
+// Explain the existing calculation; never infer a bank balance or alter stored inputs.
+export function debtChangeBreakdown(result){
+  if(!result.known)return null;
+  const terms=[
+    {kind:'opening-adjustment',amountCents:result.openingCents-result.baselineCents},
+    {kind:'spend',amountCents:result.spendCents},
+    {kind:'cost',amountCents:result.costCents},
+    {kind:'credit',amountCents:-result.creditAppliedCents},
+    {kind:'payment',amountCents:-result.appliedPaidCents}
+  ].filter(term=>term.amountCents!==0);
+  const deltaCents=add(terms.map(term=>term.amountCents));
+  assert(deltaCents===result.deltaCents&&result.baselineCents+deltaCents===result.closingCents,'Borç değişimi hesapla uyuşmuyor.');
+  return {baseline:result.baseline,baselineCents:result.baselineCents,terms,deltaCents,closingCents:result.closingCents};
 }
 
 export function spendingBreakdown(result){

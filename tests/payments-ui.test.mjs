@@ -57,3 +57,24 @@ test('Turkish month selector replaces locale-dependent date input, navigates wit
   f.submit('payment-month-picker',{pickerYear:'2200',pickerMonth:'01'});assert.match(f.page(),/2027<\/span>/);assert.equal(JSON.stringify([...f.storage]),before);
   f.setMonth('2026-10');f.add();f.click('statement');f.click('month',{value:'1'});assert.match(f.page(),/Ekim \(October\) 2026 borç kaydı/);assert.match(f.page(),/aria-controls="payment-month-picker" disabled/);
 });
+
+test('Saved card debt shows a collapsed, source-labelled explanation with only completed linked payments',()=>{
+  const f=fixture();f.data.entries.push({...f.data.entries[0],id:'unpaid',title:'Bekleyen gizli kayıt',paidDates:[],amountCents:400000});
+  f.add();f.click('statement');f.submit('payment-month-form',{openingMode:'manual',opening:'50.000',spend:'10.000',cost:'1.000',paidMode:'calendar'});
+  const before=f.storage.get(Payments.PAYMENT_KEY),html=f.page();assert.match(html,/<details class="tracking-explanation" id="[^"]+">/);assert.match(html,/Borç neden azaldı/);assert.match(html,/−12\.000 TL/);assert.match(html,/Takvim · 1 kayıt/);assert.match(html,/Ödenen takvim kayıtları/);assert.doesNotMatch(html,/Bekleyen gizli kayıt/);
+  assert.match(html,/50\.000 TL \+ 10\.000 TL \+ 1\.000 TL − 23\.000 TL = 38\.000 TL/);assert.equal(f.storage.get(Payments.PAYMENT_KEY),before);
+  f.data.entries[0].paidDates=[];assert.match(f.page(),/Borç neden arttı/);assert.doesNotMatch(f.page(),/Ödenen takvim kayıtları/);assert.equal(f.storage.get(Payments.PAYMENT_KEY),before);
+});
+test('Live formula updates without saving or re-rendering, and hides missing debt instead of assuming zero',()=>{
+  const f=fixture();f.add();f.click('statement');const before=f.storage.get(Payments.PAYMENT_KEY),form={id:'payment-month-form'},output={textContent:''},caption={textContent:''};
+  f.nodes.set('payment-preview',output);f.nodes.set('payment-equation-caption',caption);
+  const input=(name,value)=>f.listeners.input({target:{name,value,closest:()=>form}});
+  input('opening','50.000');input('spend','10.000');input('cost','1.000');assert.match(output.textContent,/50\.000 TL \+ 10\.000 TL \+ 1\.000 TL − 23\.000 TL = 38\.000 TL/);assert.equal(f.storage.get(Payments.PAYMENT_KEY),before);
+  input('opening','');assert.doesNotMatch(output.textContent,/= 0 TL/);assert.match(output.textContent,/geçerli bir tutar/);
+  const empty=fixture();empty.add();assert.doesNotMatch(empty.page(),/tracking-explanation/);
+});
+test('Manual payment replaces calendar source, while credit and input injection remain accurate and safe',()=>{
+  const f=fixture();f.data.entries[0].title='<img src=x onerror=alert(1)>';f.add();f.click('statement');f.submit('payment-month-form',{openingMode:'manual',opening:'1.000',spend:'0',cost:'0',paidMode:'calendar'});
+  let html=f.page();assert.doesNotMatch(html,/<img src=x/);assert.match(html,/&lt;img/);assert.match(html,/Borca işlenen ödeme/);assert.match(html,/Kart alacağı: 22\.000 TL/);
+  f.click('statement');f.submit('payment-month-form',{paidMode:'manual',paid:'500'});html=f.page();assert.match(html,/Ödenen tutar elle girildi/);assert.doesNotMatch(html,/Ödenen takvim kayıtları/);assert.match(html,/1\.000 TL \+ 0 TL \+ 0 TL − 500 TL = 500 TL/);
+});

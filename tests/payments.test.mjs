@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {blank,setPaid,occurrences} from '../public/model.js';
-import {validatePayments,cardMonth,cardPayments,spendingBreakdown,monthlyHistory,calendarCardSuggestions} from '../public/payments-model.js';
+import {validatePayments,cardMonth,cardPayments,spendingBreakdown,monthlyHistory,calendarCardSuggestions,debtChangeBreakdown} from '../public/payments-model.js';
 
 const row=(month,fields={})=>({month,openingMode:'manual',openingCents:5000000,spendCents:1000000,costCents:100000,paidMode:'calendar',paidCents:0,breakdown:{food:600000},...fields});
 const card=(fields={})=>({id:'akbank',name:'Akbank',bank:'akbank',currency:'TRY',paymentSource:'bank',linkedIds:[],months:[row('2026-10')],...fields});
@@ -54,4 +54,30 @@ test('Backup validation rejects duplicate months, invalid amounts, category over
 test('Calendar card suggestions never write financial data and group only known bank/currency pairs',()=>{
   const data=ledger([entry('one'),entry('two'),entry('eur',{currency:'EUR'}),entry('loan',{category:'loan',bank:'ziraat'}),entry('unknown',{bank:''})]),before=JSON.stringify(data);
   assert.equal(calendarCardSuggestions(data,[]).length,2);assert.equal(calendarCardSuggestions(data,[card()]).length,1);assert.equal(JSON.stringify(data),before);
+});
+
+test('Debt explanation reconciles to previous closing including a manual opening correction without changing inputs',()=>{
+  const c=card({months:[row('2026-10'),row('2026-11',{openingCents:4000000,spendCents:500000,costCents:100000,paidMode:'manual',paidCents:1000000,breakdown:{}})]});
+  const before=JSON.stringify(c),r=cardMonth(c,ledger(),'2026-11'),explanation=debtChangeBreakdown(r);
+  assert.equal(explanation.baseline,'previous');assert.equal(explanation.baselineCents,3800000);
+  assert.deepEqual(explanation.terms,[{kind:'opening-adjustment',amountCents:200000},{kind:'spend',amountCents:500000},{kind:'cost',amountCents:100000},{kind:'payment',amountCents:-1000000}]);
+  assert.equal(explanation.deltaCents,-200000);assert.equal(explanation.baselineCents+explanation.deltaCents,3600000);assert.equal(JSON.stringify(c),before);
+});
+test('Explanation caps payment at actual debt and applies previous credit once, including zero gross debt',()=>{
+  const c=card({paymentSource:'none',months:[row('2026-10',{openingCents:100000,spendCents:0,costCents:0,paidMode:'manual',paidCents:150000,breakdown:{}}),row('2026-11',{openingMode:'previous',spendCents:30000,costCents:0,paidMode:'manual',paidCents:0,breakdown:{}}),row('2026-12',{openingMode:'previous',spendCents:0,costCents:0,paidMode:'manual',paidCents:10000,breakdown:{}})]});
+  const first=cardMonth(c,blank(),'2026-10');assert.equal(first.creditCents,50000);assert.equal(debtChangeBreakdown(first).deltaCents,-100000);
+  const next=cardMonth(c,blank(),'2026-11');assert.equal(next.creditCents,20000);assert.equal(debtChangeBreakdown(next).deltaCents,0);assert.deepEqual(debtChangeBreakdown(next).terms,[{kind:'spend',amountCents:30000},{kind:'credit',amountCents:-30000}]);
+  const last=cardMonth(c,blank(),'2026-12');assert.equal(last.creditCents,30000);assert.equal(debtChangeBreakdown(last).deltaCents,0);
+});
+test('Missing statement, gap in carry or missing payment source never produces a fabricated debt explanation',()=>{
+  assert.equal(debtChangeBreakdown(cardMonth(card({months:[]}),ledger(),'2026-10')),null);
+  assert.equal(debtChangeBreakdown(cardMonth(card({months:[row('2026-10'),row('2026-12',{openingMode:'previous'})]}),ledger(),'2026-12')),null);
+  assert.equal(debtChangeBreakdown(cardMonth(card({paymentSource:'none'}),ledger(),'2026-10')),null);
+});
+test('Explanation remains balanced across rising/falling debt, carry, corrections and excess payments',()=>{
+  for(let i=0;i<120;i++){
+    const c=card({currency:i%2?'EUR':'TRY',paymentSource:'none',months:[row('2026-10',{openingCents:i*12345,spendCents:i*333,costCents:i*77,paidMode:'manual',paidCents:i*9876,breakdown:{}}),row('2026-11',{openingMode:i%3?'previous':'manual',openingCents:i*555,spendCents:i*3456,costCents:i*111,paidMode:'manual',paidCents:i*9876,breakdown:{}})]});
+    const r=cardMonth(c,blank(),'2026-11'),b=debtChangeBreakdown(r);
+    assert.equal(b.terms.reduce((n,t)=>n+t.amountCents,0),r.deltaCents);assert.equal(b.baselineCents+b.deltaCents,r.closingCents);assert.ok(r.closingCents>=0&&r.creditCents>=0);
+  }
 });
