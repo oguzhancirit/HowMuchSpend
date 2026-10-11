@@ -1,5 +1,5 @@
-import {CURRENCIES,parseAmount,shiftMonth,validDate} from './model.js?v=24';
-import {SAVINGS_KEY,emptySavings,validateSavings,savedBalance,monthlySavings,contributionOccurrences,savingsToday} from './savings-model.js?v=24';
+import {CURRENCIES,parseAmount,shiftMonth,validDate} from './model.js?v=25';
+import {SAVINGS_KEY,emptySavings,validateSavings,savedBalance,monthlySavings,contributionOccurrences,savingsToday} from './savings-model.js?v=25';
 const numeric=n=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n/100);
 const monthText=m=>new Intl.DateTimeFormat('tr-TR',{month:'long',year:'numeric'}).format(new Date(m+'-01T12:00:00'));
 const parse=(v,label)=>{if(/^0([,.]0{1,2})?$/.test(String(v).trim()))return 0;const n=parseAmount(v);if(n===null)throw Error(label+' için geçerli bir tutar gir.');return n;};
@@ -45,7 +45,7 @@ export function createSavingsController({getData,getCurrency,isDemo,money,esc,to
     else if(a==='cancel-extra'){extra=false;dirty=false;error='';onChange();}
     else if(a==='reset'){if(readonly())return;const balance=savedBalance(saved,savingsToday().slice(0,7));if(balance<=0)return;confirmBox('Kumbarayı sıfırladın mı?',fmt(balance)+' birikimin sıfırlanacak. Geçmiş aylardaki gider kayıtları ve hedefin korunacak.',[{label:'Evet, kumbarayı sıfırladım :(',run:()=>{try{const date=savingsToday(),amountCents=savedBalance(saved,date.slice(0,7));if(amountCents<=0)return;persist({...saved,resets:[...saved.resets,{id:crypto.randomUUID(),date,amountCents}]});dirty=false;extra=false;onChange();toast('Kumbara sıfırlandı. Yeniden başlayabilirsin.');}catch(err){toast(err.message);}}}]);}
     else if(a==='remove-deposit'){const id=b.dataset.id;confirmBox('Yanlış birikim kaydını kaldır?', 'Bu tutar kumbaradan ve ilgili ayın gider özetinden çıkarılacak. Kumbarayı boşalttıysan sıfırlama seçeneğini kullan.',[{label:'Yanlış kaydı kaldır',run:()=>{try{persist({...saved,contributions:saved.contributions.filter(c=>c.id!==id)});dirty=false;extra=false;onChange();}catch(err){toast(err.message);}}}]);}
-    else if(a==='backup'){download('HowMuchSpend-kumbara-'+savingsToday()+'.json',storageError?localStorage.getItem(SAVINGS_KEY)||'{}':JSON.stringify(saved,null,2),'application/json');toast('Kumbara yedeği indiriliyor.');}
+    else if(a==='backup'){download('DebTracker-kumbara-'+savingsToday()+'.json',storageError?localStorage.getItem(SAVINGS_KEY)||'{}':JSON.stringify(saved,null,2),'application/json');toast('Kumbara yedeği indiriliyor.');}
   }catch(err){toast(err.message);}});
   document.addEventListener('input',e=>{const form=e.target.closest('form');const target=form?.id==='savings-goal-form'?draft:form?.id==='savings-deposit-form'?depositDraft:null;if(target){target[e.target.name]=e.target.value;if(form.id==='savings-deposit-form'){dirty=true;if(document.documentElement)document.documentElement.dataset.editingSavingsDraft='true';}}});
   document.addEventListener('change',async e=>{

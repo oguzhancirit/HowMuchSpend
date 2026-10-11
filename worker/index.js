@@ -25,7 +25,7 @@ async function testDevice(env,id){
   const now=Date.now();const row=await env.DB.prepare('SELECT * FROM push_devices WHERE id = ? AND enabled = 1').bind(id).first();if(!row)return json({error:'Önce bildirimleri aç.'},404);
       const claim=await env.DB.prepare('UPDATE push_devices SET last_test_at = ? WHERE id = ? AND last_test_at < ?').bind(now,id,now-60000).run();if(!claim.meta.changes)return json({error:'Test için bir dakika bekle.'},429);
       try{
-        const r=await Push.sendPush(JSON.parse(row.subscription),{title:'HowMuchSpend',body:'Test bildirimi. Ödeme hatırlatmaların bu cihazda görünecek.',tag:'howmuchspend-test',url:'./'},env);
+        const r=await Push.sendPush(JSON.parse(row.subscription),{title:'DebTracker',body:'Test bildirimi. Ödeme hatırlatmaların bu cihazda görünecek.',tag:'howmuchspend-test',url:'./'},env);
         if(!r.ok){const reason=await Push.providerReason(r);if([404,410].includes(r.status))await env.DB.prepare('UPDATE push_devices SET enabled = 0 WHERE id = ?').bind(id).run();
           await recordTestResult(env,id,{ok:false,stage:'provider',providerStatus:r.status,reason});
           await env.DB.prepare('UPDATE push_devices SET last_test_at = ? WHERE id = ?').bind(now-45000,id).run();

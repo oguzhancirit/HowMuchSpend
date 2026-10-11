@@ -125,7 +125,7 @@ function validateFields(e,type,fallbackCurrency='TRY') {
   return {title:textField(e.title,100,true),amountCents:e.amountCents,currency,category:e.category,bank:e.bank,notes:textField(e.notes,1000)};
 }
 export function validateData(raw) {
-  assert(object(raw)&&raw.schemaVersion===SCHEMA&&Array.isArray(raw.entries)&&raw.entries.length<=10000,'Geçerli bir HowMuchSpend yedeği seç.');
+  assert(object(raw)&&raw.schemaVersion===SCHEMA&&Array.isArray(raw.entries)&&raw.entries.length<=10000,'Geçerli bir DebTracker yedeği seç.');
   const ids=new Set();
   const entries=raw.entries.map(e=>{
     assert(object(e)&&typeof e.id==='string'&&/^[\w-]{1,80}$/.test(e.id)&&!ids.has(e.id),'Kayıt kimliği geçersiz veya tekrarlı.');ids.add(e.id);

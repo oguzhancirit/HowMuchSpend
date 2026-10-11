@@ -1,5 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#111715"/>
-  <rect x="18" y="18" width="476" height="476" rx="99" fill="none" stroke="#2c3b2f" stroke-width="3"/>
-  <path d="M164 158v196M348 158v196M164 278l184-44" fill="none" stroke="#c3f082" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="DebTracker büyüteçli ajan">
+ <rect width="512" height="512" rx="112" fill="#111715"/>
+ <rect x="18" y="18" width="476" height="476" rx="99" fill="none" stroke="#2c3b2f" stroke-width="3"/>
+ <!-- A discreet detective: fedora, mask, coat; the lens follows the trail. -->
+ <path d="M155 190l24-66h105l23 66" fill="#c3f082"/>
+ <path d="M146 176h168v22H146z" fill="#111715"/>
+ <path d="M125 201h210" stroke="#c3f082" stroke-width="22" stroke-linecap="round"/>
+ <path d="M175 221v39c0 39 22 64 55 64s55-25 55-64v-39" fill="#dce8df"/>
+ <path d="M168 230h124v38l-28 12-34-15-34 15-28-12z" fill="#111715"/>
+ <path d="M190 248h18m44 0h18" stroke="#c3f082" stroke-width="9" stroke-linecap="round"/>
+ <path d="M211 312l19 28 19-28 43 21 24 64H144l24-64z" fill="#c3f082"/>
+ <path d="M196 325l34 15-20 26m54-41l-34 15 20 26" fill="none" stroke="#111715" stroke-width="10" stroke-linejoin="round"/>
+ <circle cx="322" cy="309" r="48" fill="#111715" stroke="#c3f082" stroke-width="17"/>
+ <path d="M357 344l37 40" stroke="#c3f082" stroke-width="23" stroke-linecap="round"/>
+ <path d="M301 300c3-9 9-13 18-14" fill="none" stroke="#dce8df" stroke-width="8" stroke-linecap="round"/>
 </svg>

@@ -1,5 +1,5 @@
-const CACHE='howmuchspend-shell-v24';
-const ASSETS=['./','./index.html','./style.css?v=24','./app.js?v=24','./motion.js?v=24','./payments.js?v=24','./payments-model.js?v=24','./update.js?v=24','./savings.js?v=24','./savings-model.js?v=24','./model.js?v=24','./notifications.js?v=24','./calendar-status.js?v=24','./icon.svg?v=24','./manifest.webmanifest','./apple-touch-icon.png?v=24','./icon-192.png?v=24','./icon-512.png?v=24','./assets/ziraat.png','./assets/akbank.png','./assets/yapikredi.png'];
+const CACHE='howmuchspend-shell-v25';
+const ASSETS=['./','./index.html','./style.css?v=25','./app.js?v=25','./motion.js?v=25','./payments.js?v=25','./payments-model.js?v=25','./update.js?v=25','./savings.js?v=25','./savings-model.js?v=25','./model.js?v=25','./notifications.js?v=25','./calendar-status.js?v=25','./icon.svg?v=25','./manifest.webmanifest','./apple-touch-icon.png?v=25','./icon-192.png?v=25','./icon-512.png?v=25','./assets/ziraat.png','./assets/akbank.png','./assets/yapikredi.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS.map(path=>new Request(path,{cache:'reload'})))));self.skipWaiting();});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('howmuchspend-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==location.origin)return;if(event.request.mode==='navigate'){
@@ -13,7 +13,7 @@ event.respondWith(caches.open(CACHE).then(cache=>cache.match(event.request)).the
 self.addEventListener('push',event=>{
   let payload={};try{payload=event.data?.json()||{}}catch{}
   // Every push is user visible, including malformed or empty messages.
-  event.waitUntil(self.registration.showNotification(payload.title||'HowMuchSpend',{
+  event.waitUntil(self.registration.showNotification(payload.title||'DebTracker',{
     body:payload.body||'Ödeme takvimini kontrol et.',icon:'./icon-192.png',badge:'./icon-192.png',
     tag:payload.tag||'howmuchspend-reminder',data:{url:payload.url||'./'}
   }));

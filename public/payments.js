@@ -1,5 +1,5 @@
-import {BANKS,CATEGORIES,CURRENCIES,parseAmount,today,shiftMonth,englishMonth} from './model.js?v=24';
-import {PAYMENT_KEY,emptyPayments,validatePayments,cardMonth,cardPayments,calendarCardSuggestions,monthlyHistory,spendingBreakdown,validMonth} from './payments-model.js?v=24';
+import {BANKS,CATEGORIES,CURRENCIES,parseAmount,today,shiftMonth,englishMonth} from './model.js?v=25';
+import {PAYMENT_KEY,emptyPayments,validatePayments,cardMonth,cardPayments,calendarCardSuggestions,monthlyHistory,spendingBreakdown,validMonth} from './payments-model.js?v=25';
 
 const number=n=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n/100);
 const moneyInput=(v,label)=>{if(/^0([,.]0{1,2})?$/.test(String(v).trim()))return 0;const n=parseAmount(v);if(n===null)throw Error(label+' için geçerli bir tutar gir (0 olabilir).');return n;};
@@ -117,7 +117,7 @@ export function createPaymentsController({getData,getMonth,setMonth,getCurrency,
       else if(a==='history'){allHistory=!allHistory;onChange();}
       else if(a==='calendar')onChange('calendar');
       else if(a==='remove'&&cardDraft){const id=cardDraft.id,name=cardDraft.name;confirmBox('Kartı takipten kaldır?',name+' kartının Ödeme Takibi geçmişi kaldırılacak. Takvim ve Kurtuluş kayıtların korunur.',[{label:'Takipten kaldır',run:()=>{try{persist({...saved,cards:saved.cards.filter(c=>c.id!==id)});cardDraft=null;monthDraft=null;selectedId='';error='';onChange('top');toast('Kart takipten kaldırıldı.');}catch(err){toast(err.message);}}}]);}
-      else if(a==='backup'){if(isDemo())return;download('HowMuchSpend-odeme-takibi-'+today()+'.json',storageError?localStorage.getItem(PAYMENT_KEY)||'{}':JSON.stringify(saved,null,2),'application/json');toast('Ödeme Takibi yedeği indiriliyor.');}
+      else if(a==='backup'){if(isDemo())return;download('DebTracker-odeme-takibi-'+today()+'.json',storageError?localStorage.getItem(PAYMENT_KEY)||'{}':JSON.stringify(saved,null,2),'application/json');toast('Ödeme Takibi yedeği indiriliyor.');}
     }catch(err){toast(err.message);}
   });
   document.addEventListener('input',e=>{

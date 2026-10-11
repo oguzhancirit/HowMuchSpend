@@ -1,5 +1,5 @@
-import {BANKS,parseAmount,today} from './model.js?v=24';
-import {emptyRecovery,validateRecovery,validateCard,calendarBudget,availableBudget,simulate,paymentForTarget} from './recovery-model.js?v=24';
+import {BANKS,parseAmount,today} from './model.js?v=25';
+import {emptyRecovery,validateRecovery,validateCard,calendarBudget,availableBudget,simulate,paymentForTarget} from './recovery-model.js?v=25';
 const KEY='howmuchspend.recovery.v1';
 const numeric=n=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n/100);
 const parseMoney=(value,label)=>{if(/^0([,.]0{1,2})?$/.test(String(value).trim()))return 0;const n=parseAmount(value);if(n===null)throw Error(label+' için geçerli bir TL tutarı gir.');return n;};
@@ -96,8 +96,8 @@ export function createRecoveryController({getData,isDemo,money,esc,bankImage,toa
       else if(action==='remove'){const c=saved.cards.find(c=>c.id===b.dataset.id);if(confirm(c.name+' kartını sadece Kurtuluş planından çıkar? Takvim kayıtları korunur.')){persist({...saved,cards:saved.cards.filter(c=>c.id!==b.dataset.id),budget:null,targetCents:null});redraw();}}
       else if(action==='example')showExample();
       else if(action==='example-close'){saved=beforeExample;beforeExample=null;example=false;redraw();}
-      else if(action==='backup'){const raw=storageError?localStorage.getItem(KEY):JSON.stringify(saved,null,2);download('HowMuchSpend-kurtulus-'+today()+'.json',raw||'{}','application/json');}
-      else if(action==='csv'){const p=simulate(saved.cards,Math.min(availableBudget(saved.budget),saved.targetCents??availableBudget(saved.budget)),{strategy:saved.strategy,startMonth:saved.budget.month}),cell=v=>'"'+String(v).replace(/"/g,'""')+'"';const lines=[['Ay','Ödeme TL','Yeni borç TL','Faiz + vergi TL','Kalan TL'],...p.rows.map(r=>[r.month,numeric(r.paymentCents),numeric(r.chargesCents),numeric(r.costCents),numeric(r.balanceCents)])];download('HowMuchSpend-odeme-plani.csv','\ufeff'+lines.map(r=>r.map(cell).join(';')).join('\r\n'),'text/csv;charset=utf-8');}
+      else if(action==='backup'){const raw=storageError?localStorage.getItem(KEY):JSON.stringify(saved,null,2);download('DebTracker-kurtulus-'+today()+'.json',raw||'{}','application/json');}
+      else if(action==='csv'){const p=simulate(saved.cards,Math.min(availableBudget(saved.budget),saved.targetCents??availableBudget(saved.budget)),{strategy:saved.strategy,startMonth:saved.budget.month}),cell=v=>'"'+String(v).replace(/"/g,'""')+'"';const lines=[['Ay','Ödeme TL','Yeni borç TL','Faiz + vergi TL','Kalan TL'],...p.rows.map(r=>[r.month,numeric(r.paymentCents),numeric(r.chargesCents),numeric(r.costCents),numeric(r.balanceCents)])];download('DebTracker-odeme-plani.csv','\ufeff'+lines.map(r=>r.map(cell).join(';')).join('\r\n'),'text/csv;charset=utf-8');}
     }catch(err){toast(err.message);}
   });
   document.addEventListener('input',e=>{if(e.target.id==='recovery-range'){const n=Number(e.target.value),target=document.getElementById('recovery-target');if(target)target.value=numeric(n);e.target.setAttribute('aria-valuetext',fmt(n));return;}const f=e.target.closest('form');if(f?.id==='recovery-card-form'&&draft)draft[e.target.name]=e.target.value;if(f?.id==='recovery-budget-form'&&budgetDraft){budgetDraft[e.target.name]=e.target.value;if(['income','expense'].includes(e.target.name))budgetDraft.source='manual';}});

@@ -1,4 +1,4 @@
-# HowMuchSpend
+# DebTracker
 
 iPhone için Türkçe gelir, gider ve tekrar eden ödeme takvimi.
 
