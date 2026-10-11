@@ -1,0 +1,15 @@
+{
+  "scope": "Local Node fresh bundled module evaluation, 9 alternating samples; includes embedded assets, excludes provider cold start, Safari and network",
+  "baseline": {
+    "workerBytes": 448559,
+    "workerGzipBytes": 182649,
+    "medianImportMs": 13.641394999999989,
+    "browserScriptsGzipBytes": 47740
+  },
+  "candidate": {
+    "workerBytes": 769627,
+    "workerGzipBytes": 273937,
+    "medianImportMs": 28.306765999999982,
+    "browserScriptsGzipBytes": 52185
+  }
+}

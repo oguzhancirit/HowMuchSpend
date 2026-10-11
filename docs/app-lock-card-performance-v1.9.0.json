@@ -1,0 +1,26 @@
+{
+  "environment": "Node, synthetic data, HTML generation only; excludes Safari DOM/layout/network",
+  "method": "30 warmups, nine alternating batches, median batch mean",
+  "results": [
+    {
+      "name": "Card detail HTML, 1 synthetic series",
+      "iterationsPerBatch": 30,
+      "batches": 9,
+      "baselineMedianMs": 0.4753,
+      "candidateMedianMs": 0.4772,
+      "deltaMs": 0.0019,
+      "guardrailMs": 0.2,
+      "passed": true
+    },
+    {
+      "name": "Card detail HTML, 1000 synthetic series",
+      "iterationsPerBatch": 30,
+      "batches": 9,
+      "baselineMedianMs": 7.1909,
+      "candidateMedianMs": 7.399,
+      "deltaMs": 0.2081,
+      "guardrailMs": 1.0786,
+      "passed": true
+    }
+  ]
+}

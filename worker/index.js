@@ -1,5 +1,6 @@
 import * as Model from '../public/model.js';
 import * as Push from './webpush.js';
+import {lockHandler} from './app-lock.js';
 export const istanbulDate=now=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));
 export const REMINDER_TIMES=['08:30','12:00','17:00'];
 export function dueReminders(rules,_legacyLeadDays,now=Date.now()){
@@ -84,6 +85,7 @@ export async function dispatch(env,now=Date.now()){
 }
 export async function fetchHandler(request,env){
   const url=new URL(request.url);
+  if(url.pathname.startsWith('/api/app-lock/'))return lockHandler(request,env);
   if(url.pathname.startsWith('/api/push/')){
     if(url.pathname==='/api/push/config'&&request.method==='GET'){const heartbeat=ready(env)?await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first():null;return json({ready:ready(env),schedulerReady:!!heartbeat&&Date.now()-Number(heartbeat.value)<18*3600000,publicKey:env.VAPID_PUBLIC_KEY||null});}
     if(!ready(env))return json({error:'Bildirim sunucusu hazır değil.'},503);
