@@ -1,4 +1,4 @@
-import {CURRENCIES,occurrences,monthRange,shiftMonth,today,validDate} from './model.js?v=25';
+import {CURRENCIES,occurrences,monthRange,shiftMonth,today,validDate} from './model.js?v=26';
 
 export const SAVINGS_KEY='howmuchspend.savings.v1';
 const assert=(ok,message)=>{if(!ok)throw Error(message);};

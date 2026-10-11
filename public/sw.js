@@ -1,5 +1,5 @@
-const CACHE='howmuchspend-shell-v25';
-const ASSETS=['./','./index.html','./style.css?v=25','./app.js?v=25','./motion.js?v=25','./payments.js?v=25','./payments-model.js?v=25','./update.js?v=25','./savings.js?v=25','./savings-model.js?v=25','./model.js?v=25','./notifications.js?v=25','./calendar-status.js?v=25','./icon.svg?v=25','./manifest.webmanifest','./apple-touch-icon.png?v=25','./icon-192.png?v=25','./icon-512.png?v=25','./assets/ziraat.png','./assets/akbank.png','./assets/yapikredi.png'];
+const CACHE='howmuchspend-shell-v26';
+const ASSETS=['./','./index.html','./style.css?v=26','./app.js?v=26','./motion.js?v=26','./payments.js?v=26','./payments-model.js?v=26','./update.js?v=26','./savings.js?v=26','./savings-model.js?v=26','./model.js?v=26','./notifications.js?v=26','./calendar-status.js?v=26','./icon.svg?v=26','./manifest.webmanifest','./apple-touch-icon.png?v=26','./icon-192.png?v=26','./icon-512.png?v=26','./assets/ziraat.png','./assets/akbank.png','./assets/yapikredi.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS.map(path=>new Request(path,{cache:'reload'})))));self.skipWaiting();});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('howmuchspend-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==location.origin)return;if(event.request.mode==='navigate'){

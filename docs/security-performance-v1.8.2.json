@@ -1,0 +1,50 @@
+{
+  "environment": "Node local, synthetic data, no network; not iPhone end-to-end timing",
+  "method": "30 warmups; 9 alternating batches; median batch mean",
+  "results": [
+    {
+      "name": "API config",
+      "iterationsPerBatch": 1000,
+      "batches": 9,
+      "baselineMedianMs": 0.0127,
+      "candidateMedianMs": 0.0163,
+      "deltaMs": 0.0035,
+      "deltaPercent": 27.66,
+      "guardrailMs": 0.2,
+      "passed": true
+    },
+    {
+      "name": "Reminder sync PUT",
+      "iterationsPerBatch": 250,
+      "batches": 9,
+      "baselineMedianMs": 0.2006,
+      "candidateMedianMs": 0.2184,
+      "deltaMs": 0.0178,
+      "deltaPercent": 8.86,
+      "guardrailMs": 0.2,
+      "passed": true
+    },
+    {
+      "name": "1000 recurring calendar entries",
+      "iterationsPerBatch": 250,
+      "batches": 9,
+      "baselineMedianMs": 2.1955,
+      "candidateMedianMs": 2.1987,
+      "deltaMs": 0.0031,
+      "deltaPercent": 0.14,
+      "guardrailMs": 0.3293,
+      "passed": true
+    },
+    {
+      "name": "App opening with mocked DOM",
+      "iterationsPerBatch": 50,
+      "batches": 9,
+      "baselineMedianMs": 1.7552,
+      "candidateMedianMs": 1.5827,
+      "deltaMs": -0.1725,
+      "deltaPercent": -9.83,
+      "guardrailMs": 0.2633,
+      "passed": true
+    }
+  ]
+}

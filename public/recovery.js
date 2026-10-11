@@ -1,5 +1,5 @@
-import {BANKS,parseAmount,today} from './model.js?v=25';
-import {emptyRecovery,validateRecovery,validateCard,calendarBudget,availableBudget,simulate,paymentForTarget} from './recovery-model.js?v=25';
+import {BANKS,parseAmount,today} from './model.js?v=26';
+import {emptyRecovery,validateRecovery,validateCard,calendarBudget,availableBudget,simulate,paymentForTarget} from './recovery-model.js?v=26';
 const KEY='howmuchspend.recovery.v1';
 const numeric=n=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n/100);
 const parseMoney=(value,label)=>{if(/^0([,.]0{1,2})?$/.test(String(value).trim()))return 0;const n=parseAmount(value);if(n===null)throw Error(label+' için geçerli bir TL tutarı gir.');return n;};

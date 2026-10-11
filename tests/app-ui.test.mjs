@@ -67,3 +67,7 @@ test('Paid savings appear once in monthly expense/net and day summary, never in 
  const f=fixture();f.run("month='2026-10';let expansions=0;const originalOccurrences=occurrences;occurrences=(...args)=>{expansions++;return originalOccurrences(...args)};render()");assert.equal(f.run('expansions'),1);
  f.run("data.entries[0].amountCents=100000;render()");assert.equal(f.run('expansions'),2);assert.equal(f.run('sum(list()).expense'),100000);
  });
+
+ test('SEC-04: imported HTML in titles and notes is escaped in calendar and dialogs',()=>{
+ const f=fixture();f.run(`month='2026-10';data.entries[0].title='<img src=x onerror=alert(1)>';data.entries[0].notes='<svg onload=alert(1)>';render()`);const html=f.node('#main').innerHTML;assert.doesNotMatch(html,/<img src=x|<svg onload=/);assert.match(html,/&lt;img/);f.run("openEntry(findOcc('card@2026-10-31'))");assert.equal(f.node('#entry-name').value,'<img src=x onerror=alert(1)>');
+ });
