@@ -1,7 +1,8 @@
 /* Independent of app rendering, so a failed app module cannot block updates. */
 (() => {
-  const BUILD=29, VERSION='1.9.1';
-  let checking=null,registration=null,newBuild=false,reloading=false,lastCheck=0;
+  const BUILD=30, VERSION='1.9.2';
+  let checking=null,registration=null,newBuild=false,reloading=false,lastCheck=0,started=false;
+  const gateOpen=()=>!document.documentElement?.dataset?.appLock||document.documentElement.dataset.appLock==='open';
   const editing=()=>document.documentElement?.dataset?.appLock==='locked'||document.documentElement?.dataset?.appLock==='suspended'||!!document.querySelector('dialog[open], [data-editing-savings], html[data-editing-savings-draft="true"], [data-editing-payments], html[data-editing-payments-draft="true"]');
   const status=text=>{const node=document.getElementById('update-status');if(node)node.textContent=text;};
   function showUpdate(){
@@ -29,17 +30,26 @@
     } catch {status('Kontrol edilemedi. İnternet bağlantınla tekrar dene.');if(manual){const toast=document.getElementById('toast');if(toast){toast.textContent='Güncelleme kontrol edilemedi. Kayıtların korunuyor.';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),4500);}}}
   }
   function check(manual=false){
+    if(!started){if(!manual)return Promise.resolve();start();}
     if(newBuild){reload();return Promise.resolve();}
     if(checking)return checking;
     if(!manual&&Date.now()-lastCheck<15000)return Promise.resolve();
     checking=run(manual).finally(()=>{checking=null;});return checking;
   }
   document.addEventListener('click',e=>{if(e.target.closest('[data-check-update]'))check(true);});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check();});
-  window.addEventListener('pageshow',()=>check());
-  window.addEventListener('online',()=>check(true));
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(newBuild)reload();});
-    navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>{registration=r;return check();}).catch(()=>check());
-  } else check();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&gateOpen()){start();check();}});
+  window.addEventListener('pageshow',()=>{if(gateOpen()){start();check();}});
+  window.addEventListener('online',()=>{if(gateOpen()){start();check(true);}});
+  function start(){
+    if(started)return;started=true;
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{if(newBuild)reload();});
+      navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>{registration=r;return check();}).catch(()=>check());
+    }else check();
+  }
+  window.addEventListener('app-lock-prompt',start);
+  window.addEventListener('app-lock-change',()=>{if(gateOpen()){start();check();}});
+  // Broken/offline lock bootstrap must not permanently block app updates.
+  setTimeout(start,6000);
+  if(gateOpen())start();
 })();

@@ -1,0 +1,23 @@
+{
+  "scope": "Synthetic packaged-Worker first /options request, nine alternating fresh modules, fixed 25 ms per D1 RPC; excludes network, Sites auth, iPhone and Apple sheet",
+  "baseline": {
+    "requestMedianMs": 105.55249100000003,
+    "moduleImportMedianMs": 59.99866599999996,
+    "d1RpcCount": 3,
+    "promptPrefix": {
+      "files": 13,
+      "rawBytes": 245155,
+      "gzipBytes": 69336
+    }
+  },
+  "candidate": {
+    "requestMedianMs": 53.16165299999989,
+    "moduleImportMedianMs": 55.24396399999978,
+    "d1RpcCount": 2,
+    "promptPrefix": {
+      "files": 4,
+      "rawBytes": 21930,
+      "gzipBytes": 8008
+    }
+  }
+}

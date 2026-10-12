@@ -17,7 +17,7 @@ export function publicKeyOptions(options,register){
   else if(options.allowCredentials)value.allowCredentials=options.allowCredentials.map(c=>({...c,id:unb64(c.id)}));
   return value;
 }
-export function createAppLock({startApp}){
+export function createAppLock({startApp,prepareApp=()=>{}}){
   const root=document.documentElement,screen=document.getElementById('app-lock-screen'),dialog=document.getElementById('app-lock-setup');
   let saved={enabled:false,token:''},storageFailed=false,busy=false,started=false,locked=false,hiddenAt=null,timer=null,pendingCode='',setupActive=false,automaticAttempted=false,unusedChallenge=null;
   try{const raw=localStorage.getItem(KEY);if(raw){saved=JSON.parse(raw);if(typeof saved.enabled!=='boolean'||!/^[a-f0-9]{64}$/.test(saved.token))throw Error();}}catch{storageFailed=true;locked=true;}
@@ -41,7 +41,11 @@ export function createAppLock({startApp}){
     let options;
     if(unusedChallenge?.purpose===purpose&&Date.now()-unusedChallenge.at<105000)options=unusedChallenge.options;
     else {({options}=await api('options',{purpose}));unusedChallenge={purpose,options,at:Date.now()};}
-    const credential=await navigator.credentials.get({publicKey:publicKeyOptions(options,false),mediation:'required'});
+    const assertion=navigator.credentials.get({publicKey:publicKeyOptions(options,false),mediation:'required'});
+    // Start noncritical downloads only after the system prompt request.
+    window.dispatchEvent(new CustomEvent('app-lock-prompt'));
+    prepareApp();
+    const credential=await assertion;
     if(!credential)throw Error('Doğrulama tamamlanmadı.');
     unusedChallenge=null;
     if(purpose==='disable'){saved.pending='disable';persist();}
@@ -51,7 +55,7 @@ export function createAppLock({startApp}){
   function errorText(error){return error.name==='NotAllowedError'?'Doğrulama iptal edildi veya süresi doldu. Tekrar deneyebilirsin.':error.name==='InvalidStateError'?'Geçiş anahtarı zaten mevcut. Yeniden dene veya kurtarma kodunu kullan.':error.message||'Doğrulama tamamlanmadı.';}
   async function reveal(){
     if(document.visibilityState==='hidden'){locked=true;mask('locked');return;}
-    if(!started){await startApp();started=true;}
+    if(!started){prepareApp();await startApp();started=true;}
     locked=false;hiddenAt=null;clearTimeout(timer);mask('open');message('');notify();
   }
   function automaticUnlock(){

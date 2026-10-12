@@ -12,6 +12,10 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 - Kumbara önerisi “Planına göre bu ay önerilen” olarak etiketlenir; planlanan netin banka bakiyesi olmadığı açıklanır. Hesap ve gerçek aktarım davranışı değişmez.
 - [Doğrulama ve yerel performans karşılaştırması](docs/product-improvements-v1.8.3.md). Takvim düzeni, font, renkler, banka görselleri, özet ve bildirim saatleri korunur.
 
+## Face ID açılış performansı (v1.9.2)
+
+Doğrulama isteği açılışta önceliklidir. Takvim modülleri, büyük stil dosyası ve güncelleme kontrolü Face ID isteğinden sonra başlar. Sunucuda istek hazırlamak için ağır doğrulama modülü yüklenmez; imza kontrolü korunur. [Ölçümler ve doğrulama sınırları](docs/lock-performance-v1.9.2.md).
+
 ## Face ID / geçiş anahtarı kilidi (v1.9.1)
 
 Ayarlar → Uygulama kilidi → Etkinleştir. Kurtarma kodunu sakladıktan sonra geçiş anahtarı oluştur. Yeni açılışta veya uygulamadan 1 dakika uzak kaldıktan sonra doğrulama otomatik başlar; kısa geçişlerde ekran hemen gizlenir ve dönüşte oturum sürer. Kapatma da doğrulama ister. Kurtarma kodu yalnız kilidi kaldırır, finansal kayıtları silmez.

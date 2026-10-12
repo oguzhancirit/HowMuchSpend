@@ -5,13 +5,13 @@ import vm from 'node:vm';
 const current=JSON.parse(fs.readFileSync(new URL('../public/release.json',import.meta.url),'utf8'));
 const source=fs.readFileSync(new URL('../public/update.js',import.meta.url),'utf8');
 function harness({release=current,open=false,offline=false,lock='open'}={}){
- const listeners={},nodes=new Map(),calls={reload:0,fetch:0,update:0};
+ const listeners={},nodes=new Map(),calls={reload:0,fetch:0,update:0},timers=[];
  const status={textContent:''};nodes.set('update-status',status);
  const banner={classList:{add(){},remove(){}},setAttribute(){},querySelector:()=>({textContent:''})};
  const document={documentElement:{dataset:{appLock:lock}},visibilityState:'visible',querySelector:()=>open?{}:null,getElementById:key=>nodes.get(key),createElement:()=>banner,body:{append:n=>nodes.set(n.id,n)},addEventListener:(name,fn)=>listeners[name]=fn};
- const context=vm.createContext({document,window:{location:{reload:()=>calls.reload++},addEventListener:(name,fn)=>listeners[name]=fn},navigator:{serviceWorker:{register:async(url,options)=>{calls.registration={url,options};return {update:async()=>{calls.update++}}},addEventListener:(name,fn)=>listeners[name]=fn}},fetch:async(url,options)=>{calls.fetch++;calls.request={url,options};if(offline)throw Error('offline');return {ok:true,json:async()=>release}},Date,Number,Promise,setTimeout:()=>1,localStorage:new Proxy({},{get:()=>{throw Error('Update must not access saved financial data')}})});
+ const context=vm.createContext({document,window:{location:{reload:()=>calls.reload++},addEventListener:(name,fn)=>listeners[name]=fn},navigator:{serviceWorker:{register:async(url,options)=>{calls.registration={url,options};return {update:async()=>{calls.update++}}},addEventListener:(name,fn)=>listeners[name]=fn}},fetch:async(url,options)=>{calls.fetch++;calls.request={url,options};if(offline)throw Error('offline');return {ok:true,json:async()=>release}},Date,Number,Promise,setTimeout:(fn,ms)=>{timers.push({fn,ms});return 1},localStorage:new Proxy({},{get:()=>{throw Error('Update must not access saved financial data')}})});
  vm.runInContext(source,context);
- return {calls,status,nodes,listeners,settle:()=>new Promise(resolve=>setImmediate(resolve))};
+ return {calls,status,nodes,listeners,timers,settle:()=>new Promise(resolve=>setImmediate(resolve))};
 }
 test('Update independently registers worker and bypasses HTTP cache',async()=>{
  const h=harness();await h.settle();assert.equal(h.calls.registration.url,'./sw.js');assert.equal(h.calls.registration.options.updateViaCache,'none');assert.equal(h.calls.request.options.cache,'no-store');assert.equal(h.calls.update,1);assert.equal(h.calls.reload,0);assert.match(h.status.textContent,/Güncel/);
@@ -30,7 +30,11 @@ test('Offline update leaves app usable without reload or data mutation',async()=
 test('Release, worker cache and versioned entrypoints identify same build',()=>{
  const release=JSON.parse(fs.readFileSync(new URL('../public/release.json',import.meta.url),'utf8'));
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');const worker=fs.readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
- assert.match(source,new RegExp('BUILD='+release.build));assert.ok(html.includes('update.js?v='+release.build));assert.ok(html.includes('app.js?v='+release.build));assert.ok(app.includes('model.js?v='+release.build));assert.ok(worker.includes('shell-v'+release.build));assert.match(worker,/cache:'no-store'/);assert.match(worker,/cache:'reload'/);
+ assert.match(source,new RegExp('BUILD='+release.build));assert.ok(html.includes('update.js?v='+release.build));assert.ok(html.includes('boot.js?v='+release.build));assert.ok(app.includes('model.js?v='+release.build));assert.ok(worker.includes('shell-v'+release.build));assert.match(worker,/cache:'no-store'/);assert.match(worker,/cache:'reload'/);
 });
 
-test('An update waits while the app is locked, without revealing or reloading saved content',async()=>{const h=harness({release:{build:current.build+1,version:'future'},lock:'locked'});await h.settle();assert.equal(h.calls.reload,0);assert.ok(h.nodes.has('update-banner'));});
+test('An update waits while the app is locked, without revealing or reloading saved content',async()=>{const h=harness({release:{build:current.build+1,version:'future'},lock:'locked'});await h.settle();assert.equal(h.calls.fetch,0);h.listeners['app-lock-prompt']();await h.settle();assert.equal(h.calls.reload,0);assert.ok(h.nodes.has('update-banner'));});
+
+test('Initial update traffic waits for the passkey prompt and starts only once',async()=>{const h=harness({lock:'boot'});await h.settle();assert.equal(h.calls.fetch,0);assert.equal(h.calls.registration,undefined);h.listeners['app-lock-prompt']();h.listeners['app-lock-prompt']();await h.settle();assert.equal(h.calls.fetch,1);assert.equal(h.calls.update,1);});
+test('A broken lock bootstrap still receives updates after a bounded fallback',async()=>{const h=harness({lock:'locked'});await h.settle();assert.equal(h.calls.fetch,0);const fallback=h.timers.find(t=>t.ms===6000);assert.ok(fallback);fallback.fn();await h.settle();assert.equal(h.calls.fetch,1);assert.ok(h.calls.registration);});
+test('Resume while locked leaves network priority to authentication until the gate opens',async()=>{const h=harness({lock:'locked'});h.listeners.pageshow();h.listeners.visibilitychange();h.listeners.online();await h.settle();assert.equal(h.calls.fetch,0);h.listeners['app-lock-prompt']();await h.settle();assert.equal(h.calls.fetch,1);});

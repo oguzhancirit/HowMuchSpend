@@ -5,6 +5,6 @@ const worker=await import('data:text/javascript;base64,'+Buffer.from(source).toS
 assert.equal(typeof worker.default.fetch,'function');
 const manifest=JSON.parse(await readFile('dist/.openai/hosting.json','utf8'));
 assert.equal(manifest.d1,'DB');assert.equal(manifest.static,undefined);
-for(const route of ['/','/style.css?v=29','/boot.js?v=29','/app-lock.js?v=29','/sw.js','/motion.js?v=29','/savings.js?v=29','/savings-model.js?v=29','/payments.js?v=29','/payments-model.js?v=29','/assets/akbank.png','/release.json']){const r=await worker.default.fetch(new Request('https://test.local'+route),{});assert.equal(r.status,200,route);assert.ok((await r.arrayBuffer()).byteLength>0);}
+for(const route of ['/','/lock.css?v=30','/style.css?v=30','/boot.js?v=30','/app-lock.js?v=30','/sw.js','/motion.js?v=30','/savings.js?v=30','/savings-model.js?v=30','/payments.js?v=30','/payments-model.js?v=30','/assets/akbank.png','/release.json']){const r=await worker.default.fetch(new Request('https://test.local'+route),{});assert.equal(r.status,200,route);assert.ok((await r.arrayBuffer()).byteLength>0);}
 const api=await worker.default.fetch(new Request('https://test.local/api/push/config'),{});assert.equal((await api.json()).ready,false);
 console.log('Artifact: valid ESM, embedded app/assets, API boundary, D1 declaration');

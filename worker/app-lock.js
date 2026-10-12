@@ -34,20 +34,29 @@ export async function lockHandler(request,env){
     const input=await readBody(request),token=request.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
     if(!token)return json({error:'Bu cihazın kilit anahtarı eksik.'},401);
     const id=await hash(token),now=Date.now(),db=env.DB;
-    const device=await db.prepare('SELECT * FROM app_lock_devices WHERE id = ?').bind(id).first();
-    if(device&&(device.user_id!==user||device.origin!==origin))return json({error:'Bu kilit farklı bir oturuma ait.'},403);
     const route=url.pathname.slice('/api/app-lock/'.length);
+    // Fetch device and rate-limit state in one D1 round trip on the prompt path.
+    const row=await db.prepare(route==='options'?`SELECT d.*, c.created_at AS challenge_created_at FROM (SELECT ? AS lock_id) k LEFT JOIN app_lock_devices d ON d.id=k.lock_id LEFT JOIN app_lock_challenges c ON c.id=k.lock_id`:'SELECT * FROM app_lock_devices WHERE id = ?').bind(id).first();
+    const device=row?.id?row:null;
+    if(device&&(device.user_id!==user||device.origin!==origin))return json({error:'Bu kilit farklı bir oturuma ait.'},403);
     if(route==='status')return json({enrolled:device?.enabled===1,cleared:device?.enabled===0});
     if(route==='options'){
       const purpose=input.purpose;
       if(!['register','unlock','disable'].includes(purpose))throw fail('Geçersiz işlem.');
       if(purpose==='register'&&device?.enabled===1)throw fail('Bu cihazda kilit zaten etkin.',409);
       if(purpose!=='register'&&device?.enabled!==1)throw fail('Kilit kaydı bulunamadı. Kurtarma kodunu kullan.',404);
-      const recent=await db.prepare('SELECT created_at FROM app_lock_challenges WHERE id = ?').bind(id).first();
-      if(recent&&now-recent.created_at<1000)throw fail('Bir saniye sonra tekrar dene.',429);
+      if(row?.challenge_created_at!=null&&now-row.challenge_created_at<1000)throw fail('Bir saniye sonra tekrar dene.',429);
       const stored=device?.enabled===1?JSON.parse(device.credential):null;
-      const {generateRegistrationOptions,generateAuthenticationOptions}=await loadVerification();
-      const options=purpose==='register'?await generateRegistrationOptions({rpName:'DebTracker',rpID:url.hostname,userName:'DebTracker kişisel alan',userID:new TextEncoder().encode(id),attestationType:'none',supportedAlgorithmIDs:[-7],authenticatorSelection:{residentKey:'required',userVerification:'required',authenticatorAttachment:'platform'}}):await generateAuthenticationOptions({rpID:url.hostname,userVerification:'required',allowCredentials:[{id:stored.id,transports:stored.transports}]});
+      let options;
+      if(purpose==='register'){
+        const {generateRegistrationOptions}=await loadVerification();
+        options=await generateRegistrationOptions({rpName:'DebTracker',rpID:url.hostname,userName:'DebTracker kişisel alan',userID:new TextEncoder().encode(id),attestationType:'none',supportedAlgorithmIDs:[-7],authenticatorSelection:{residentKey:'required',userVerification:'required',authenticatorAttachment:'platform'}});
+      }else{
+        // Preparing an assertion only needs an unpredictable server challenge,
+        // not certificate/ASN.1 initialization. Signature verification still
+        // uses the maintained verifier, with the same security requirements.
+        options={rpId:url.hostname,challenge:toB64(crypto.getRandomValues(new Uint8Array(32))),allowCredentials:[{id:stored.id,transports:stored.transports,type:'public-key'}],timeout:60000,userVerification:'required'};
+      }
       await db.batch([
         db.prepare('DELETE FROM app_lock_challenges WHERE expires_at < ?').bind(now),
         db.prepare('INSERT INTO app_lock_challenges (id,user_id,purpose,challenge,origin,expires_at,created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,purpose=excluded.purpose,challenge=excluded.challenge,origin=excluded.origin,expires_at=excluded.expires_at,created_at=excluded.created_at').bind(id,user,purpose,options.challenge,origin,now+120000,now)
