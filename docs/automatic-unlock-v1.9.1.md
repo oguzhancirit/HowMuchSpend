@@ -1,0 +1,13 @@
+# DebTracker v1.9.1 — automatic passkey unlock
+
+12 October 2026. A registered/enabled lock now starts one WebAuthn assertion automatically on initial opening. After the existing 60-second foreground grace expires, returning to the app also starts verification. Restoring a page from bfcache starts it on a new entry. Short returns continue the existing unlocked session. Manual lock intentionally stays locked.
+
+Automatic attempts never register new credentials, change recovery codes or migrate financial data. The existing server checks remain unchanged. The application module is imported only after a successfully verified assertion. While verification runs, the unlock button is hidden and status is shown. Cancellation, unavailable network, missing identity/credential or browser restrictions leave the gate closed, with a manual retry/recovery fallback. One attempt per entry and the existing busy guard prevent lifecycle events or the native authentication sheet from triggering repeated prompts. An unused challenge can be retried within 105 seconds; it is discarded before any assertion is submitted for verification. Consumed challenges are never cached for reuse.
+
+Native iOS applications can call LocalAuthentication.evaluatePolicy when their view becomes active. This web app uses WebAuthn; it cannot control Apple's credential picker, provider confirmation UI, biometric/passcode choice or system rate limiting. Modern WebKit removed its mandatory user-gesture rule (WebKit bug 264444, committed 271656@main on 6 December 2023). Automatic requests can therefore be initiated; this does not guarantee that every device/provider presents a zero-tap Face ID sheet.
+
+Sources: https://bugs.webkit.org/show_bug.cgi?id=264444 and https://developer.apple.com/documentation/LocalAuthentication/logging-a-user-into-your-app-with-face-id-or-touch-id
+
+131 tests pass. Five added behavioral tests cover automatic opening without a click, cancellation without repeat prompts, a safe manual retry, short/long returns and bfcache, authentication-sheet lifecycle events without duplicate requests, and manual lock. The remaining lock, signature, storage, notification and calendar checks pass. Syntax, build and artifact validation pass. No new dependency, server route or D1 migration is introduced; build 29 updates the existing installed app.
+
+Physical iPhone/Home Screen UI was not tested here because browser-control capability is unavailable. The previous release's physical enrollment/manual unlock was confirmed working by the user. Native/provider sheet appearance and real-device zero-tap behavior still require confirmation on the user's phone.

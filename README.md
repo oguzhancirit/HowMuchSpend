@@ -12,11 +12,11 @@ Canlı uygulama: https://howmuchspend.ozicirit9.chatgpt.site
 - Kumbara önerisi “Planına göre bu ay önerilen” olarak etiketlenir; planlanan netin banka bakiyesi olmadığı açıklanır. Hesap ve gerçek aktarım davranışı değişmez.
 - [Doğrulama ve yerel performans karşılaştırması](docs/product-improvements-v1.8.3.md). Takvim düzeni, font, renkler, banka görselleri, özet ve bildirim saatleri korunur.
 
-## Face ID / geçiş anahtarı kilidi (v1.9.0)
+## Face ID / geçiş anahtarı kilidi (v1.9.1)
 
-Ayarlar → Uygulama kilidi → Etkinleştir. Kurtarma kodunu sakladıktan sonra geçiş anahtarı oluştur. Yeni açılışta veya uygulamadan 1 dakika uzak kaldıktan sonra doğrulama gerekir; kısa geçişlerde ekran hemen gizlenir ve dönüşte oturum sürer. Kapatma da doğrulama ister. Kurtarma kodu yalnız kilidi kaldırır, finansal kayıtları silmez.
+Ayarlar → Uygulama kilidi → Etkinleştir. Kurtarma kodunu sakladıktan sonra geçiş anahtarı oluştur. Yeni açılışta veya uygulamadan 1 dakika uzak kaldıktan sonra doğrulama otomatik başlar; kısa geçişlerde ekran hemen gizlenir ve dönüşte oturum sürer. Kapatma da doğrulama ister. Kurtarma kodu yalnız kilidi kaldırır, finansal kayıtları silmez.
 
-Mevcut ChatGPT/Sites girişi korunur. İnternet gerekir; iOS cihaz parolasını da kullanabilir. Bu özellik localStorage kayıtlarını şifrelemez ve yedekleme yerine geçmez. [Doğrulama, güvenlik sınırları ve ölçülen performans](docs/app-lock-v1.9.0.md).
+Mevcut ChatGPT/Sites girişi korunur. İnternet gerekir; iOS cihaz parolasını da kullanabilir. Bu özellik localStorage kayıtlarını şifrelemez ve yedekleme yerine geçmez. [Doğrulama, güvenlik sınırları ve ölçülen performans](docs/app-lock-v1.9.0.md). [Otomatik açılış ve geri dönüş davranışı](docs/automatic-unlock-v1.9.1.md).
 
 ## Kullanım
 

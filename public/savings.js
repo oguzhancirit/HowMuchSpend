@@ -1,5 +1,5 @@
-import {CURRENCIES,parseAmount,shiftMonth,validDate} from './model.js?v=28';
-import {SAVINGS_KEY,emptySavings,validateSavings,savedBalance,monthlySavings,contributionOccurrences,savingsToday} from './savings-model.js?v=28';
+import {CURRENCIES,parseAmount,shiftMonth,validDate} from './model.js?v=29';
+import {SAVINGS_KEY,emptySavings,validateSavings,savedBalance,monthlySavings,contributionOccurrences,savingsToday} from './savings-model.js?v=29';
 const numeric=n=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(n/100);
 const monthText=m=>new Intl.DateTimeFormat('tr-TR',{month:'long',year:'numeric'}).format(new Date(m+'-01T12:00:00'));
 const parse=(v,label)=>{if(/^0([,.]0{1,2})?$/.test(String(v).trim()))return 0;const n=parseAmount(v);if(n===null)throw Error(label+' için geçerli bir tutar gir.');return n;};

@@ -19,7 +19,7 @@ export function publicKeyOptions(options,register){
 }
 export function createAppLock({startApp}){
   const root=document.documentElement,screen=document.getElementById('app-lock-screen'),dialog=document.getElementById('app-lock-setup');
-  let saved={enabled:false,token:''},storageFailed=false,busy=false,started=false,locked=false,hiddenAt=null,timer=null,pendingCode='',setupActive=false;
+  let saved={enabled:false,token:''},storageFailed=false,busy=false,started=false,locked=false,hiddenAt=null,timer=null,pendingCode='',setupActive=false,automaticAttempted=false,unusedChallenge=null;
   try{const raw=localStorage.getItem(KEY);if(raw){saved=JSON.parse(raw);if(typeof saved.enabled!=='boolean'||!/^[a-f0-9]{64}$/.test(saved.token))throw Error();}}catch{storageFailed=true;locked=true;}
   const supported=()=>!!window.PublicKeyCredential&&!!navigator.credentials&&isSecureContext;
   const notify=()=>window.dispatchEvent(new CustomEvent('app-lock-change'));
@@ -27,7 +27,7 @@ export function createAppLock({startApp}){
   async function reconcile(){if(!saved.pending)return;const status=await api('status',{});if(!status.enrolled&&saved.pending!=='register'&&!status.cleared)throw Error('Kilit kaydı doğrulanamadı. Sayfayı yeniden aç; tarayıcı verilerini silme.');saved.enabled=status.enrolled;saved.pending=null;persist();}
   function mask(state){root.dataset.appLock=state;document.getElementById('app-lock-caption').textContent='Uygulama kilitli';for(const node of document.querySelectorAll('.app-shell,.bottom-nav,dialog:not(#app-lock-setup),#toast,#update-banner'))node.inert=state!=='open';screen.hidden=state==='open';}
   function message(text){document.getElementById('app-lock-error').textContent=text;}
-  function controls(){document.getElementById('app-lock-unlock').disabled=busy;document.getElementById('app-lock-recover').disabled=busy;}
+  function controls(){root.dataset.lockAuthenticating=String(busy);document.getElementById('app-lock-unlock').disabled=busy;document.getElementById('app-lock-recover').disabled=busy;document.getElementById('app-lock-caption').textContent=busy?'Kimliğin doğrulanıyor…':'Uygulama kilitli';}
   async function api(route,input){
     if(!/^[a-f0-9]{64}$/.test(saved.token))throw Error('Bu cihazın kilit anahtarı okunamadı. Tarayıcı verilerini silme.');
     let response;try{response=await fetch('./api/app-lock/'+route,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+saved.token},body:JSON.stringify(input),credentials:'same-origin',cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});}catch{throw Error('Doğrulama için internet bağlantısı gerekli. Tekrar dene.');}
@@ -36,9 +36,14 @@ export function createAppLock({startApp}){
   }
   async function authenticate(purpose){
     if(!supported())throw Error('Bu cihaz geçiş anahtarı doğrulamasını desteklemiyor. Kurtarma kodunu kullan.');
-    const {options}=await api('options',{purpose});
-    const credential=await navigator.credentials.get({publicKey:publicKeyOptions(options,false)});
+    // An unused challenge survives a cancelled prompt for a short manual retry.
+    // Never reuse one after an assertion is sent to the server.
+    let options;
+    if(unusedChallenge?.purpose===purpose&&Date.now()-unusedChallenge.at<105000)options=unusedChallenge.options;
+    else {({options}=await api('options',{purpose}));unusedChallenge={purpose,options,at:Date.now()};}
+    const credential=await navigator.credentials.get({publicKey:publicKeyOptions(options,false),mediation:'required'});
     if(!credential)throw Error('Doğrulama tamamlanmadı.');
+    unusedChallenge=null;
     if(purpose==='disable'){saved.pending='disable';persist();}
     await api('verify',{purpose,response:credentialJSON(credential)});
     saved.pending=null;persist();
@@ -49,7 +54,12 @@ export function createAppLock({startApp}){
     if(!started){await startApp();started=true;}
     locked=false;hiddenAt=null;clearTimeout(timer);mask('open');message('');notify();
   }
-  function lock(){if(!saved.enabled)return;locked=true;mask('locked');for(const d of document.querySelectorAll('dialog[open]'))d.close();notify();document.getElementById('app-lock-unlock').focus();}
+  function automaticUnlock(){
+    if(automaticAttempted||busy||setupActive||storageFailed||saved.pending||!saved.enabled||document.visibilityState==='hidden')return Promise.resolve();
+    automaticAttempted=true;
+    return unlock();
+  }
+  function lock(automatically=false){if(!saved.enabled)return;locked=true;mask('locked');for(const d of document.querySelectorAll('dialog[open]'))d.close();notify();if(automatically)return automaticUnlock();document.getElementById('app-lock-unlock').focus();}
   async function unlock(){if(busy)return;busy=true;controls();message('');try{await authenticate('unlock');await reveal();}catch(error){message(errorText(error));}finally{busy=false;controls();}}
   async function recover(){if(busy)return;busy=true;controls();message('');try{saved.pending='recover';persist();await api('recover',{recoveryCode:document.getElementById('app-lock-recovery-code').value});saved.enabled=false;saved.pending=null;persist();document.getElementById('app-lock-recovery-code').value='';await reveal();}catch(error){if(saved.pending){try{await reconcile();if(!saved.enabled){await reveal();return;}}catch{}}message(errorText(error));}finally{busy=false;controls();}}
   function setup(){
@@ -78,7 +88,7 @@ export function createAppLock({startApp}){
       document.getElementById('app-lock-setup-error').textContent=errorText(error);
     }finally{busy=false;document.getElementById('app-lock-enable').disabled=!document.getElementById('app-lock-code-saved').checked;}
   }
-  async function disable(){if(busy)return;busy=true;try{await authenticate('disable');saved.enabled=false;persist();notify();}catch(error){if(saved.pending){try{await reconcile();if(!saved.enabled){notify();return;}}catch{lock();}}window.alert(errorText(error));}finally{busy=false;}}
+  async function disable(){if(busy)return;busy=true;try{await authenticate('disable');saved.enabled=false;persist();await reveal();}catch(error){if(saved.pending){try{await reconcile();if(!saved.enabled){await reveal();return;}}catch{lock();}}window.alert(errorText(error));}finally{busy=false;}}
   function panel(){return `<section class="panel settings-panel"><div class="section-head"><h2>Uygulama kilidi</h2><span class="notification-status ${saved.enabled?'enabled':''}">${saved.enabled?'Açık':'Kapalı'}</span></div><div class="settings-item"><span class="lock-settings-icon">${faceIcon}</span><div><strong>Face ID / geçiş anahtarı</strong><small>${saved.enabled?'Açılışta ve 1 dakika sonra doğrular':'Tutarları görmeden önce kimliğini doğrula'}</small></div><button class="secondary" data-lock-action="${saved.enabled?'disable':'setup'}" ${!supported()?'disabled':''}>${saved.enabled?'Kapat':'Etkinleştir'}</button></div>${saved.enabled?'<button class="secondary full" data-lock-action="lock">Şimdi kilitle</button>':''}<small class="backup-note">${!supported()?'Bu tarayıcı geçiş anahtarını desteklemiyor. ':''}iOS, Face ID veya cihaz parolasını kullanabilir. Kilit için internet gerekir. Bu özellik cihazdaki kayıtları şifrelemez. Bildirimler devam eder.</small></section>`;}
   document.getElementById('app-lock-unlock').addEventListener('click',unlock);
   document.getElementById('app-lock-recover').addEventListener('click',recover);
@@ -95,10 +105,10 @@ export function createAppLock({startApp}){
   document.addEventListener('click',e=>{const button=e.target.closest('[data-lock-action]');if(button){e.preventDefault();({setup,disable,lock})[button.dataset.lockAction]?.();}});
   document.addEventListener('visibilitychange',()=>{
     if(!saved.enabled||setupActive)return;
-    if(document.visibilityState==='hidden'){hiddenAt=Date.now();mask('suspended');clearTimeout(timer);timer=setTimeout(()=>{locked=true;},60000);}
-    else {clearTimeout(timer);if(locked||hiddenAt!==null&&needsReauth(hiddenAt,Date.now()))lock();else {mask('open');hiddenAt=null;}}
+    if(document.visibilityState==='hidden'){if(!busy)automaticAttempted=false;hiddenAt=Date.now();mask('suspended');clearTimeout(timer);timer=setTimeout(()=>{locked=true;},60000);}
+    else {clearTimeout(timer);if(locked||hiddenAt!==null&&needsReauth(hiddenAt,Date.now()))return lock(true);else {mask('open');hiddenAt=null;}}
   });
-  window.addEventListener('pagehide',()=>{if(saved.enabled)mask('suspended');});
-  window.addEventListener('pageshow',e=>{if(e.persisted&&saved.enabled)lock();});
-  return {panel,isLocked:()=>locked||root.dataset.appLock!=='open',async boot(){if(storageFailed){mask('locked');message('Kilit ayarı okunamadı. Tarayıcı verilerini silme; sayfayı yeniden aç.');return;}if(saved.pending){try{await reconcile();}catch(error){locked=true;mask('locked');message(errorText(error));return;}}if(saved.enabled){locked=true;mask('locked');}else {try{await reveal();}catch{mask('locked');message('Uygulama yüklenemedi. Sayfayı yeniden aç.');}}}};
+  window.addEventListener('pagehide',()=>{if(saved.enabled){if(!busy)automaticAttempted=false;mask('suspended');}});
+  window.addEventListener('pageshow',e=>{if(e.persisted&&saved.enabled)return lock(true);});
+  return {panel,isLocked:()=>locked||root.dataset.appLock!=='open',async boot(){if(storageFailed){mask('locked');message('Kilit ayarı okunamadı. Tarayıcı verilerini silme; sayfayı yeniden aç.');return;}if(saved.pending){try{await reconcile();}catch(error){locked=true;mask('locked');message(errorText(error));return;}}if(saved.enabled){locked=true;mask('locked');await automaticUnlock();}else {try{await reveal();}catch{mask('locked');message('Uygulama yüklenemedi. Sayfayı yeniden aç.');}}}};
 }

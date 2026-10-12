@@ -144,6 +144,7 @@ html[data-motion=reduced] .savings-liquid,html[data-motion=reduced] .savings-pro
 html:not([data-app-lock="open"]) .app-shell,html:not([data-app-lock="open"]) .bottom-nav,html:not([data-app-lock="open"]) dialog:not(#app-lock-setup),html:not([data-app-lock="open"]) #toast,html:not([data-app-lock="open"]) #update-banner{visibility:hidden!important;pointer-events:none!important}
 .app-lock-screen{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:var(--bg,#111715);padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));overflow:auto}
 .app-lock-screen[hidden]{display:none}
+html[data-lock-authenticating="true"] #app-lock-unlock{visibility:hidden}
 html[data-app-lock="boot"] #app-lock-unlock,html[data-app-lock="boot"] #app-lock-error,html[data-app-lock="boot"] .lock-recovery,html[data-app-lock="boot"] #app-lock-refresh{visibility:hidden}
 .app-lock-card{width:min(100%,360px);text-align:center}
 .app-lock-card>img{margin:0 auto 18px}.app-lock-card h1{font-size:28px;margin:0 0 8px}.app-lock-card>p{color:var(--muted,#9aa59e);margin-bottom:24px}.app-lock-card .form-error{margin:14px 0;min-height:20px;font-size:14px}

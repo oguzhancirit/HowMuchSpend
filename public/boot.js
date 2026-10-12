@@ -1,3 +1,3 @@
-import {createAppLock} from './app-lock.js?v=28';
-window.DebTrackerLock=createAppLock({startApp:()=>import('./app.js?v=28')});
+import {createAppLock} from './app-lock.js?v=29';
+window.DebTrackerLock=createAppLock({startApp:()=>import('./app.js?v=29')});
 await window.DebTrackerLock.boot();
