@@ -1,9 +1,8 @@
 /* Independent of app rendering, so a failed app module cannot block updates. */
 (() => {
-  const BUILD=30, VERSION='1.9.2';
+  const BUILD=31, VERSION='1.9.3';
   let checking=null,registration=null,newBuild=false,reloading=false,lastCheck=0,started=false;
-  const gateOpen=()=>!document.documentElement?.dataset?.appLock||document.documentElement.dataset.appLock==='open';
-  const editing=()=>document.documentElement?.dataset?.appLock==='locked'||document.documentElement?.dataset?.appLock==='suspended'||!!document.querySelector('dialog[open], [data-editing-savings], html[data-editing-savings-draft="true"], [data-editing-payments], html[data-editing-payments-draft="true"]');
+  const editing=()=>!!document.querySelector('dialog[open], [data-editing-savings], html[data-editing-savings-draft="true"], [data-editing-payments], html[data-editing-payments-draft="true"]');
   const status=text=>{const node=document.getElementById('update-status');if(node)node.textContent=text;};
   function showUpdate(){
     let banner=document.getElementById('update-banner');
@@ -37,9 +36,9 @@
     checking=run(manual).finally(()=>{checking=null;});return checking;
   }
   document.addEventListener('click',e=>{if(e.target.closest('[data-check-update]'))check(true);});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&gateOpen()){start();check();}});
-  window.addEventListener('pageshow',()=>{if(gateOpen()){start();check();}});
-  window.addEventListener('online',()=>{if(gateOpen()){start();check(true);}});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){start();check();}});
+  window.addEventListener('pageshow',()=>{start();check();});
+  window.addEventListener('online',()=>{start();check(true);});
   function start(){
     if(started)return;started=true;
     if('serviceWorker' in navigator){
@@ -47,9 +46,5 @@
       navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>{registration=r;return check();}).catch(()=>check());
     }else check();
   }
-  window.addEventListener('app-lock-prompt',start);
-  window.addEventListener('app-lock-change',()=>{if(gateOpen()){start();check();}});
-  // Broken/offline lock bootstrap must not permanently block app updates.
-  setTimeout(start,6000);
-  if(gateOpen())start();
+  start();
 })();

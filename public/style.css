@@ -140,14 +140,3 @@ html[data-motion=reduced] .savings-liquid,html[data-motion=reduced] .savings-pro
 
 /* DebTracker wordmark: one name, two clear parts. */
 .brand-name{white-space:nowrap;font-weight:750;letter-spacing:-.045em}.brand-tracker{color:#c3f082}[data-theme="light"] .brand-tracker{color:#477b20}
-/* A locked app never exposes the calendar, open sheets or update/toast content. */
-html:not([data-app-lock="open"]) .app-shell,html:not([data-app-lock="open"]) .bottom-nav,html:not([data-app-lock="open"]) dialog:not(#app-lock-setup),html:not([data-app-lock="open"]) #toast,html:not([data-app-lock="open"]) #update-banner{visibility:hidden!important;pointer-events:none!important}
-.app-lock-screen{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:var(--bg,#111715);padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));overflow:auto}
-.app-lock-screen[hidden]{display:none}
-html[data-lock-authenticating="true"] #app-lock-unlock{visibility:hidden}
-html[data-app-lock="boot"] #app-lock-unlock,html[data-app-lock="boot"] #app-lock-error,html[data-app-lock="boot"] .lock-recovery,html[data-app-lock="boot"] #app-lock-refresh{visibility:hidden}
-.app-lock-card{width:min(100%,360px);text-align:center}
-.app-lock-card>img{margin:0 auto 18px}.app-lock-card h1{font-size:28px;margin:0 0 8px}.app-lock-card>p{color:var(--muted,#9aa59e);margin-bottom:24px}.app-lock-card .form-error{margin:14px 0;min-height:20px;font-size:14px}
-.lock-recovery{text-align:left;margin:18px 0;font-size:14px}.lock-recovery summary{padding:12px 0;cursor:pointer}.lock-recovery .field{margin:14px 0}.lock-recovery small{display:block;color:var(--muted,#9aa59e);line-height:1.5;margin-top:12px}
-.lock-recovery-code{display:block;overflow-wrap:anywhere;word-break:break-word;padding:16px;border:1px solid var(--line,#334039);border-radius:12px;font-size:17px;line-height:1.6;margin:16px 0;user-select:all}
-.lock-code-check{display:flex;align-items:center;gap:10px;margin:18px 0;font-size:14px;line-height:1.4}.lock-code-check input{width:20px;height:20px;flex-shrink:0}.lock-settings-icon svg{width:26px;height:26px}.app-lock-screen .primary{justify-content:center;min-height:50px}

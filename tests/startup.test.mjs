@@ -16,3 +16,14 @@ test('Installed app shell opens without waiting for a stalled network; reminder 
 test('Navigation to APIs and authentication never substitutes cached application HTML',()=>{
  const w=worker(true);for(const route of ['/api/push/device','/auth/login','/other'])assert.equal(w.request(route),undefined);assert.equal(w.calls.fetch,0);
 });
+
+test('Retired Face ID preference cannot block startup and only its own storage key is removed',async()=>{
+ const boot=fs.readFileSync(new URL('../public/boot.js',import.meta.url),'utf8');
+ for(const failure of [false,true]){
+  const removed=[],state=new Map([['howmuchspend.appLock.v1','{"enabled":true,"pending":"register"}'],['howmuchspend.v1','ledger'],['howmuchspend.push.v1','subscription'],['howmuchspend.savings.v1','savings']]);let starts=0;
+  await vm.runInNewContext('(async()=>{'+boot.replace(/await import\([^;]+\);/,'await startApp();')+'})()',{
+   localStorage:{removeItem(key){removed.push(key);if(failure)throw Error('storage unavailable');state.delete(key);}},startApp(){starts++;}
+  });
+  assert.equal(starts,1);assert.deepEqual(removed,['howmuchspend.appLock.v1']);assert.equal(state.get('howmuchspend.v1'),'ledger');assert.equal(state.get('howmuchspend.push.v1'),'subscription');assert.equal(state.get('howmuchspend.savings.v1'),'savings');
+ }
+});

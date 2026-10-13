@@ -1,17 +1,14 @@
 {
   "name": "debtracker",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "private": true,
   "type": "module",
   "description": "A local-first income and expense calendar, designed for iPhone.",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check public/savings.js && node --check public/savings-model.js && node --check public/payments.js && node --check public/payments-model.js && node --check public/motion.js && node --check public/recovery.js && node --check public/recovery-model.js && node --check public/app.js && node --check public/notifications.js && node --check public/sw.js && node --check worker/index.js && node --check worker/webpush.js && node --check public/app-lock.js && node --check public/boot.js && node --check worker/app-lock.js",
+    "check": "node --check public/savings.js && node --check public/savings-model.js && node --check public/payments.js && node --check public/payments-model.js && node --check public/motion.js && node --check public/recovery.js && node --check public/recovery-model.js && node --check public/app.js && node --check public/notifications.js && node --check public/sw.js && node --check worker/index.js && node --check worker/webpush.js && node --check public/boot.js",
     "build": "node scripts/build.mjs",
     "validate": "node scripts/validate-artifact.mjs"
-  },
-  "dependencies": {
-    "@simplewebauthn/server": "13.2.2"
   },
   "devDependencies": {
     "esbuild": "0.25.12"

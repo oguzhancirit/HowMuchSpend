@@ -1,35 +1,27 @@
 <!doctype html>
-<html lang="tr" data-theme="dark" data-app-lock="boot">
+<html lang="tr" data-theme="dark">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111715"><meta name="description" content="Gelirin, giderin ve ödeme günlerin. Hepsi tek bir takvimde.">
   <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="DebTracker">
   <title>DebTracker</title>
-  <link rel="icon" href="./icon.svg?v=30" type="image/svg+xml"><link rel="apple-touch-icon" href="./apple-touch-icon.png?v=30"><link rel="manifest" href="./manifest.webmanifest">
-  <link rel="modulepreload" href="./boot.js?v=30" fetchpriority="high">
-  <link rel="modulepreload" href="./app-lock.js?v=30" fetchpriority="high">
-  <link rel="stylesheet" href="./lock.css?v=30" fetchpriority="high"><script defer src="./update.js?v=30"></script><script type="module" src="./boot.js?v=30"></script>
+  <link rel="icon" href="./icon.svg?v=31" type="image/svg+xml"><link rel="apple-touch-icon" href="./apple-touch-icon.png?v=31"><link rel="manifest" href="./manifest.webmanifest">
+  <link rel="modulepreload" href="./boot.js?v=31" fetchpriority="high">
+  <link rel="modulepreload" href="./app.js?v=31">
+  <link rel="stylesheet" href="./style.css?v=31" fetchpriority="high"><script defer src="./update.js?v=31"></script><script type="module" src="./boot.js?v=31"></script>
 </head>
 <body>
-<section id="app-lock-screen" class="app-lock-screen" aria-labelledby="app-lock-title">
-  <div class="app-lock-card"><img src="./icon.svg?v=30" width="52" height="52" alt=""><h1 id="app-lock-title">Deb<span class="brand-tracker">Tracker</span></h1><p id="app-lock-caption">Açılıyor…</p>
-  <button type="button" class="primary full" id="app-lock-unlock">Face ID ile kilidi aç</button>
-  <p id="app-lock-error" class="form-error" role="alert"></p>
-  <details class="lock-recovery"><summary>Geçiş anahtarını kullanamıyorum</summary><label class="field">Kurtarma kodu<input id="app-lock-recovery-code" type="password" autocomplete="off" maxlength="48" autocapitalize="none" spellcheck="false"></label><button type="button" class="secondary full" id="app-lock-recover">Kodla kilidi kaldır</button><small>Kayıtların korunur. İnternet ve mevcut hesabınla giriş gerekir.</small></details>
-  <button type="button" class="text-btn" id="app-lock-refresh">Sayfayı / oturumu yenile</button></div>
-</section>
-<dialog id="app-lock-setup" class="small-dialog" aria-labelledby="app-lock-setup-title"><h2 id="app-lock-setup-title">Face ID ile kilitle</h2><p>Önce kurtarma kodunu güvenli bir yere kaydet. Geçiş anahtarını kaybedersen bu kod kilidi kaldırır.</p><code id="app-lock-setup-code" class="lock-recovery-code"></code><button type="button" class="secondary full" id="app-lock-save-code">Kodu indir</button><label class="lock-code-check"><input id="app-lock-code-saved" type="checkbox"> Kurtarma kodunu kaydettim</label><p id="app-lock-setup-error" class="form-error" role="alert"></p><button type="button" class="primary full" id="app-lock-enable" disabled>Geçiş anahtarı oluştur</button><button type="button" class="secondary full" id="app-lock-setup-cancel">Vazgeç</button></dialog>
 <div class="app-shell">
   <aside class="sidebar">
-    <a class="brand" href="#calendar" data-view="calendar" aria-label="DebTracker ana sayfa"><img class="brand-mark" src="./icon.svg?v=30" alt="" width="38" height="38"><span class="brand-name">Deb<span class="brand-tracker">Tracker</span></span></a>
+    <a class="brand" href="#calendar" data-view="calendar" aria-label="DebTracker ana sayfa"><img class="brand-mark" src="./icon.svg?v=31" alt="" width="38" height="38"><span class="brand-name">Deb<span class="brand-tracker">Tracker</span></span></a>
     <div class="workspace"><span class="avatar">O</span><div>Kişisel takvim</div></div>
     <p class="nav-label">ÇALIŞMA ALANIN</p>
     <nav class="desktop-nav" aria-label="Ana menü"></nav>
 
-    <div class="sidebar-footer"><span class="live-dot"></span> Bu cihazda saklanır <span class="version">v1.9.2</span></div>
+    <div class="sidebar-footer"><span class="live-dot"></span> Bu cihazda saklanır <span class="version">v1.9.3</span></div>
   </aside>
   <div class="main-wrap">
-    <header class="topbar"><div class="mobile-brand"><img class="brand-mark" src="./icon.svg?v=30" alt="" width="38" height="38"> <span class="brand-name">Deb<span class="brand-tracker">Tracker</span></span></div><div class="breadcrumb">Kişisel alan <span>/</span> <strong id="breadcrumb">Takvim</strong></div><div class="top-actions"><select id="display-currency" class="currency-select" aria-label="Takvim ve özet para birimi"><option value="TRY">TL</option><option value="EUR">EUR</option><option value="USD">USD</option></select><button class="icon-button desktop-add" data-action="add" aria-label="Gelir veya gider ekle">＋</button><button class="icon-button" id="privacy" aria-label="Tutarları gizle"></button><button class="avatar" data-view="settings" aria-label="Ayarları aç">O</button></div></header>
+    <header class="topbar"><div class="mobile-brand"><img class="brand-mark" src="./icon.svg?v=31" alt="" width="38" height="38"> <span class="brand-name">Deb<span class="brand-tracker">Tracker</span></span></div><div class="breadcrumb">Kişisel alan <span>/</span> <strong id="breadcrumb">Takvim</strong></div><div class="top-actions"><select id="display-currency" class="currency-select" aria-label="Takvim ve özet para birimi"><option value="TRY">TL</option><option value="EUR">EUR</option><option value="USD">USD</option></select><button class="icon-button desktop-add" data-action="add" aria-label="Gelir veya gider ekle">＋</button><button class="icon-button" id="privacy" aria-label="Tutarları gizle"></button><button class="avatar" data-view="settings" aria-label="Ayarları aç">O</button></div></header>
     <main id="main" tabindex="-1"></main>
 
   </div>
