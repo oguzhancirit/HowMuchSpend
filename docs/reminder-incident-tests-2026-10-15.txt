@@ -1,0 +1,21 @@
+✔ Exact boundaries: never early; each due window closes at 2 hours (3.615262ms)
+✔ Reproduce 08:28:35.782: successful HTTP with zero pushes still advances heartbeat (18.624278ms)
+✔ Early noon/evening calls also return success without scheduling a later push (3.571647ms)
+✔ A post-slot retry sends once; same-slot duplicate sends nothing (11.723369ms)
+✔ Both income and expense have three independent deliveries and no replay next day (18.795366ms)
+✔ Missing noon invocation creates no noon delivery; evening never replays missed noon (4.784824ms)
+✔ Payment after morning cancels noon/evening and does not touch old sent delivery (4.296808ms)
+✔ Payment between lease and actual send cancels the claimed reminder (1.557065ms)
+✔ Concurrent checks share one atomic lease, preventing duplicate delivery (4.090307ms)
+✔ Disabled subscriptions and skipped records never reach the provider (3.172936ms)
+✔ Apple rejection is a real failure, not success; a later successful retry deduplicates (6.079117ms)
+✔ Expired Apple subscription is disabled and never retried in later slots (3.491737ms)
+✔ Single healthy heartbeat falsely reports scheduler ready despite missing noon dispatch (1.756855ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 209.586133
