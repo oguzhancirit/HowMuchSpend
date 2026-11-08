@@ -81,3 +81,37 @@ test('Explanation remains balanced across rising/falling debt, carry, correction
     assert.equal(b.terms.reduce((n,t)=>n+t.amountCents,0),r.deltaCents);assert.equal(b.baselineCents+b.deltaCents,r.closingCents);assert.ok(r.closingCents>=0&&r.creditCents>=0);
   }
 });
+
+
+test('Statement total already includes carry and interest; payment is subtracted exactly once',()=>{
+  const c=card({months:[{month:'2026-10',modelVersion:2,openingMode:'manual',openingCents:2000000,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000}]});
+  const before=JSON.stringify(c),normalized=validate([c]).cards[0],r=cardMonth(normalized,blank(),'2026-10');
+  assert.equal(r.totalCents,3200000);
+  assert.equal(r.closingCents,2200000);
+  assert.equal(r.interestCents,85000);
+  assert.equal(r.openingCents,2000000);
+  assert.equal(r.grossCents,3200000);
+  assert.equal(debtChangeBreakdown(r).deltaCents,200000);
+  assert.equal(JSON.stringify(c),before);
+});
+
+test('New statement months carry the previous closing only as a reference, never add it to statement total',()=>{
+  const c=card({paymentSource:'none',months:[
+    {month:'2026-10',modelVersion:2,openingMode:'manual',openingCents:2000000,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000},
+    {month:'2026-11',modelVersion:2,openingMode:'previous',openingCents:0,statementTotalCents:4100000,interestCents:120000,paidMode:'manual',paidCents:500000}
+  ]});
+  const r=cardMonth(validate([c]).cards[0],blank(),'2026-11');
+  assert.equal(r.openingCents,2200000);
+  assert.equal(r.totalCents,4100000);
+  assert.equal(r.closingCents,3600000);
+  assert.equal(r.interestCents,120000);
+});
+
+test('Legacy monthly records remain in their original format alongside statement-model records',()=>{
+  const legacy=row('2026-09'),modern={month:'2026-10',modelVersion:2,openingMode:'previous',openingCents:0,statementTotalCents:5000000,interestCents:90000,paidMode:'manual',paidCents:100000};
+  const c=validate([card({paymentSource:'none',months:[legacy,modern]})]).cards[0];
+  assert.equal(Object.hasOwn(c.months[0],'statementTotalCents'),false);
+  assert.equal(c.months[0].spendCents,1000000);
+  assert.equal(c.months[1].statementTotalCents,5000000);
+  assert.equal(cardMonth(c,blank(),'2026-10').closingCents,4900000);
+});

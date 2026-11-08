@@ -30,6 +30,9 @@ export function validatePayments(raw){
     const months=c.months.map(m=>{
       assert(object(m)&&validMonth(m.month)&&!monthIds.has(m.month),'Ay geçersiz veya tekrarlı.');monthIds.add(m.month);
       assert(['manual','previous'].includes(m.openingMode)&&['calendar','manual'].includes(m.paidMode),'Aylık tutar kaynağı geçersiz.');
+      if(Object.hasOwn(m,'statementTotalCents')){
+        return {month:m.month,modelVersion:2,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Hatırlanan devreden borç'),statementTotalCents:amount(m.statementTotalCents,'Ekstre toplam borcu'),interestCents:amount(m.interestCents,'Faiz tutarı'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar')};
+      }
       const out={month:m.month,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Devreden borç'),spendCents:amount(m.spendCents,'Yeni harcama'),costCents:amount(m.costCents,'Faiz ve vergi'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar'),breakdown:{}};
       assert(object(m.breakdown),'Harcama dağılımı geçersiz.');
       for(const [category,n] of Object.entries(m.breakdown)){assert(Object.hasOwn(CATEGORIES,category)&&CATEGORIES[category].type==='expense'&&!['card','loan'].includes(category),'Harcama kategorisi geçersiz.');out.breakdown[category]=amount(n,'Kategori tutarı');}
@@ -51,9 +54,20 @@ function calculateMonths(card,data,month){
   const results=new Map();
   for(const record of card.months.filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month))){
     const payment=cardPayments(card,data,record.month),previous=results.get(shiftMonth(record.month,-1));
-    const openingKnown=record.openingMode==='manual'||!!previous?.known;
     const paidKnown=record.paidMode==='manual'||card.paymentSource!=='none';
     const paidCents=record.paidMode==='manual'?record.paidCents:payment.paidCents;
+    if(Object.hasOwn(record,'statementTotalCents')){
+      const openingKnown=record.openingMode==='manual'||!!previous?.known;
+      const openingCents=record.openingMode==='manual'?record.openingCents:previous?.closingCents??null;
+      const known=paidKnown;
+      const totalCents=known?record.statementTotalCents:null;
+      const closingCents=known?Math.max(0,totalCents-paidCents):null;
+      const creditCents=known?Math.max(0,paidCents-totalCents):null;
+      const baseline=previous?.known?previous.closingCents:openingCents;
+      results.set(record.month,{...record,modelVersion:2,known,openingKnown,paidKnown,openingCents,totalCents,statementTotalCents:record.statementTotalCents,interestCents:record.interestCents,grossCents:totalCents,costCents:record.interestCents,spendCents:0,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,creditAppliedCents:0,pendingCents:payment.pendingCents,deltaCents:known&&baseline!=null?closingCents-baseline:null,baselineCents:baseline,baseline:previous?.known?'previous':'opening',hasRecord:true});
+      continue;
+    }
+    const openingKnown=record.openingMode==='manual'||!!previous?.known;
     const openingCents=record.openingMode==='manual'?record.openingCents:previous?.closingCents??null;
     const openingCreditCents=record.openingMode==='previous'?previous?.creditCents||0:0;
     const known=openingKnown&&paidKnown;
@@ -77,7 +91,11 @@ export function cardMonth(card,data,month){
 // Explain the existing calculation; never infer a bank balance or alter stored inputs.
 export function debtChangeBreakdown(result){
   if(!result.known)return null;
-  const terms=[
+  if(result.baselineCents==null)return null;
+  const terms=Object.hasOwn(result,'statementTotalCents')?[
+    {kind:'statement',amountCents:result.statementTotalCents-result.baselineCents},
+    {kind:'payment',amountCents:-result.appliedPaidCents}
+  ].filter(term=>term.amountCents!==0):[
     {kind:'opening-adjustment',amountCents:result.openingCents-result.baselineCents},
     {kind:'spend',amountCents:result.spendCents},
     {kind:'cost',amountCents:result.costCents},
