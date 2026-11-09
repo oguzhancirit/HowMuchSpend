@@ -25,7 +25,7 @@ test('Card onboarding asks the bank, saves a separate tracker and shows actual p
 });
 test('Monthly form creates a proportional flow, category distribution and history; next month uses remaining carry',()=>{
   const f=fixture();f.add();f.click('statement');
-  f.submit('payment-month-form',{openingMode:'manual',opening:'50.000',statementTotal:'61.000',interest:'1.000',paidMode:'calendar',category_food:'6.000'});
+  f.submit('payment-month-form',{openingMode:'manual',opening:'50.000',statementTotal:'61.000',interest:'1.000',paidMode:'calendar'});
   let html=f.page();assert.match(html,/38\.000 TL/);assert.match(html,/Borç azalıyor/);assert.match(html,/tracking-flow/);assert.match(html,/Bu ay faiz: 1\.000 TL/);assert.match(html,/Ay ay takip/);
   f.setMonth('2026-11');f.click('statement');assert.match(f.page(),/Önceki ayın kalanından otomatik/);assert.match(f.page(),/38\.000 TL/);
   f.submit('payment-month-form',{openingMode:'previous',statementTotal:'43.000',interest:'0',paidMode:'manual',paid:'10.000'});html=f.page();assert.match(html,/33\.000 TL/);assert.match(html,/Ödenen tutar elle girildi/);
@@ -33,7 +33,7 @@ test('Monthly form creates a proportional flow, category distribution and histor
 });
 test('Invalid category allocation cannot overwrite a saved month; future calendar completion recomputes carry',()=>{
   const f=fixture();f.add();f.click('statement');f.submit('payment-month-form',{openingMode:'manual',opening:'50.000',statementTotal:'61.000',interest:'1.000',paidMode:'calendar'});const before=f.storage.get(Payments.PAYMENT_KEY);
-  f.click('statement');f.submit('payment-month-form',{statementTotal:'hatalı'});assert.match(f.page(),/Ekstre toplam borcu/);assert.equal(f.storage.get(Payments.PAYMENT_KEY),before);f.click('cancel');
+  f.click('statement');f.submit('payment-month-form',{openingMode:'manual',opening:'50.000',statementTotal:'hatalı',interest:'1.000',paidMode:'calendar'});assert.match(f.page(),/Ekstre toplam borcu/);assert.equal(f.storage.get(Payments.PAYMENT_KEY),before);f.click('cancel');
   f.data.entries[0].paidDates=[];assert.match(f.page(),/61\.000 TL/);assert.equal(f.storage.get(Payments.PAYMENT_KEY),before);
 });
 test('Hidden totals redact flow labels, history and accessible chart labels; demo cannot write real cards',()=>{
@@ -41,9 +41,9 @@ test('Hidden totals redact flow labels, history and accessible chart labels; dem
   const before=f.storage.get(Payments.PAYMENT_KEY);f.setDemo(true);f.click('add');assert.match(f.page(),/Kendi takvimine geç/);assert.equal(f.storage.get(Payments.PAYMENT_KEY),before);
 });
 test('Navigation preserves month draft; currency changes never relabel a recorded history',()=>{
-  const f=fixture();f.add();f.click('statement');f.nodes.set('payment-month-form',{id:'payment-month-form',fields:{opening:'64.500',spend:'100',cost:'0',paidMode:'manual',paid:'500'}});
+  const f=fixture();f.add();f.click('statement');f.nodes.set('payment-month-form',{id:'payment-month-form',fields:{openingMode:'manual',opening:'64.500',statementTotal:'65.000',interest:'0',paidMode:'manual',paid:'500'}});
   vm.runInContext('controller.captureDraft()',f.ctx);assert.match(f.page(),/64.500/);assert.equal(JSON.parse(f.storage.get(Payments.PAYMENT_KEY)).cards[0].months.length,0);
-  f.submit('payment-month-form',{});const c=JSON.parse(f.storage.get(Payments.PAYMENT_KEY)).cards[0];f.click('edit',{id:c.id});f.submit('payment-card-form',{currency:'EUR'});assert.match(f.page(),/para birimi değiştirilemez/);assert.equal(JSON.parse(f.storage.get(Payments.PAYMENT_KEY)).cards[0].currency,'TRY');
+  f.submit('payment-month-form',{openingMode:'manual',opening:'64.500',statementTotal:'65.000',interest:'0',paidMode:'manual',paid:'500'});const c=JSON.parse(f.storage.get(Payments.PAYMENT_KEY)).cards[0];f.click('edit',{id:c.id});f.submit('payment-card-form',{currency:'EUR'});assert.match(f.page(),/para birimi değiştirilemez/);assert.equal(JSON.parse(f.storage.get(Payments.PAYMENT_KEY)).cards[0].currency,'TRY');
 });
 test('Corrupt storage is retained for backup and cannot be overwritten by adding a card',()=>{
   const f=fixture({broken:true});assert.match(f.page(),/verisi okunamadı/);f.click('add');assert.equal(f.storage.get(Payments.PAYMENT_KEY),'broken-json');f.click('backup');assert.equal(f.downloaded()[1],'broken-json');assert.equal(f.storage.get('howmuchspend.data.v1'),'LEDGER_UNCHANGED');
