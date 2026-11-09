@@ -32,7 +32,6 @@ export function validatePayments(raw){
       assert(['manual','previous'].includes(m.openingMode)&&['calendar','manual'].includes(m.paidMode),'Aylık tutar kaynağı geçersiz.');
       if(Object.hasOwn(m,'statementTotalCents')){
         assert(m.statementDate==null||validDate(m.statementDate),'Ekstre kesim tarihi geçersiz.');
-        assert(m.statementDate!=null||m.paidMode==='manual','Takvim ödemeleri için ekstre kesim tarihi gerekli.');
         return {month:m.month,modelVersion:2,statementDate:m.statementDate||null,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Hatırlanan devreden borç'),statementTotalCents:amount(m.statementTotalCents,'Ekstre toplam borcu'),interestCents:amount(m.interestCents,'Faiz tutarı'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar')};
       }
       const out={month:m.month,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Devreden borç'),spendCents:amount(m.spendCents,'Yeni harcama'),costCents:amount(m.costCents,'Faiz ve vergi'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar'),breakdown:{}};
@@ -73,11 +72,12 @@ export function cardPayments(card,data,month,{from,to}={})
 }
 
 // A payment entry is never treated as the card's total debt. Only explicit monthly statements establish debt.
-export function cardStatementPayments(card,data,month){
+export function cardStatementPayments(card,data,month,statementDateOverride=null){
   const records=card.months.filter(m=>Object.hasOwn(m,'statementTotalCents')).sort((a,b)=>(a.statementDate||a.month+'-01').localeCompare(b.statementDate||b.month+'-01'));
   const index=records.findIndex(r=>r.month===month),record=records[index];
-  if(!record?.statementDate)return {entries:[],paidCents:0,pendingCents:0};
-  const from=addDays(record.statementDate,1),next=records.slice(index+1).find(r=>r.statementDate),to=next?addDays(next.statementDate,-1):today();
+  const statementDate=statementDateOverride||record?.statementDate;
+  if(!statementDate)return {entries:[],paidCents:0,pendingCents:0};
+  const from=addDays(statementDate,1),next=records.slice(index+1).find(r=>r.statementDate),to=next?addDays(next.statementDate,-1):today();
   return cardPayments(card,data,month,{from,to});
 }
 function calculateMonths(card,data,month){
