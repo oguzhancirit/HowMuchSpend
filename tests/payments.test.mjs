@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {blank,setPaid,occurrences} from '../public/model.js';
-import {validatePayments,cardMonth,cardPayments,cardStatementPayments,migrateLegacyPayments,spendingBreakdown,monthlyHistory,calendarCardSuggestions,debtChangeBreakdown} from '../public/payments-model.js';
+import {validatePayments,cardMonth,cardPayments,cardStatementPayments,spendingBreakdown,monthlyHistory,calendarCardSuggestions,debtChangeBreakdown} from '../public/payments-model.js';
 
 const row=(month,fields={})=>({month,openingMode:'manual',openingCents:5000000,spendCents:1000000,costCents:100000,paidMode:'calendar',paidCents:0,breakdown:{food:600000},...fields});
 const card=(fields={})=>({id:'akbank',name:'Akbank',bank:'akbank',currency:'TRY',paymentSource:'bank',linkedIds:[],months:[row('2026-10')],...fields});
@@ -138,4 +138,34 @@ test('One-time legacy migration preserves calculated totals and freezes historic
   assert.equal(record.paidCents,before.paidCents);
   assert.equal(after.closingCents,before.closingCents);
   assert.equal(migrateLegacyPayments(migrated,ledger()).cards[0].months[0].statementTotalCents,record.statementTotalCents);
+});
+
+test('New monthly records calculate remaining balance from total debt minus manual payment',()=>{
+  const c=card({paymentSource:'none',months:[
+    {month:'2026-10',totalDebtCents:3200000,interestCents:44273,paidCents:1000000},
+    {month:'2026-11',totalDebtCents:2800000,interestCents:25000,paidCents:500000}
+  ]});
+  const r=cardMonth(c,ledger([]),'2026-10'),next=cardMonth(c,ledger([]),'2026-11');
+  assert.equal(r.closingCents,2200000);
+  assert.equal(next.closingCents,2300000);
+  assert.equal(next.deltaCents,100000);
+  assert.equal(next.interestCents,25000);
+});
+test('Legacy records remain in their original format and keep their historical calculation',()=>{
+  const old=card({months:[row('2026-10',{paidMode:'manual',paidCents:500000})]});
+  const raw={schemaVersion:1,cards:[old],updatedAt:null},validated=validatePayments(raw);
+  assert.deepEqual(validated.cards[0].months[0],old.months[0]);
+  const r=cardMonth(validated.cards[0],ledger([]),'2026-10');
+  assert.equal(r.closingCents,5600000);
+  assert.equal(Object.hasOwn(validated.cards[0].months[0],'totalDebtCents'),false);
+});
+test('Mixed legacy and simplified records use the previous recorded month closing balance',()=>{
+  const c=card({months:[
+    row('2026-09',{paidMode:'manual',paidCents:500000}),
+    {month:'2026-10',totalDebtCents:4000000,interestCents:10000,paidCents:1000000},
+    row('2026-11',{openingMode:'previous',openingCents:0,paidMode:'manual',paidCents:0})
+  ]});
+  const oct=cardMonth(c,ledger([]),'2026-10'),nov=cardMonth(c,ledger([]),'2026-11');
+  assert.equal(oct.deltaCents,oct.closingCents-5600000);
+  assert.equal(nov.openingCents,oct.closingCents);
 });
