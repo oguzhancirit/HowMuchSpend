@@ -1,4 +1,4 @@
-import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=31';
+import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth,addDays,today,validDate} from './model.js?v=31';
 
 export const PAYMENT_KEY='howmuchspend.payments.v1';
 const MAX=1e12;
@@ -31,7 +31,9 @@ export function validatePayments(raw){
       assert(object(m)&&validMonth(m.month)&&!monthIds.has(m.month),'Ay geçersiz veya tekrarlı.');monthIds.add(m.month);
       assert(['manual','previous'].includes(m.openingMode)&&['calendar','manual'].includes(m.paidMode),'Aylık tutar kaynağı geçersiz.');
       if(Object.hasOwn(m,'statementTotalCents')){
-        return {month:m.month,modelVersion:2,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Hatırlanan devreden borç'),statementTotalCents:amount(m.statementTotalCents,'Ekstre toplam borcu'),interestCents:amount(m.interestCents,'Faiz tutarı'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar')};
+        assert(m.statementDate==null||validDate(m.statementDate),'Ekstre kesim tarihi geçersiz.');
+        assert(m.statementDate!=null||m.paidMode==='manual','Takvim ödemeleri için ekstre kesim tarihi gerekli.');
+        return {month:m.month,modelVersion:2,statementDate:m.statementDate||null,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Hatırlanan devreden borç'),statementTotalCents:amount(m.statementTotalCents,'Ekstre toplam borcu'),interestCents:amount(m.interestCents,'Faiz tutarı'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar')};
       }
       const out={month:m.month,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Devreden borç'),spendCents:amount(m.spendCents,'Yeni harcama'),costCents:amount(m.costCents,'Faiz ve vergi'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar'),breakdown:{}};
       assert(object(m.breakdown),'Harcama dağılımı geçersiz.');
@@ -44,17 +46,46 @@ export function validatePayments(raw){
   return {schemaVersion:1,cards,updatedAt:typeof raw.updatedAt==='string'?raw.updatedAt:null};
 }
 
-export function cardPayments(card,data,month){
-  const entries=occurrences(data,...monthRange(month)).filter(e=>e.type==='expense'&&e.category==='card'&&(e.currency||'TRY')===card.currency&&(card.paymentSource==='bank'?e.bank===card.bank:card.paymentSource==='links'&&card.linkedIds.includes(e.seriesId)));
+export function migrateLegacyPayments(raw,data){
+  const normalized=validatePayments(raw),cards=normalized.cards.map(card=>{
+    if(!card.months.some(m=>!Object.hasOwn(m,'statementTotalCents')))return card;
+    const through=card.months.at(-1)?.month||'1900-01',calculated=calculateMonths(card,data,through);
+    const months=card.months.map(record=>{
+      if(Object.hasOwn(record,'statementTotalCents'))return record;
+      const result=calculated.get(record.month);
+      assert(result?.known&&Number.isSafeInteger(result.totalCents),'Eski kayıtların tamamı güvenle dönüştürülemedi. Eksik devreden veya ödeme bilgilerini tamamlamadan geçiş yapılmadı.');
+      return {month:record.month,modelVersion:2,statementDate:null,openingMode:record.openingMode,openingCents:result.openingCents,statementTotalCents:result.totalCents,interestCents:record.costCents,paidMode:'manual',paidCents:result.paidCents};
+    });
+    return {...card,months};
+  });
+  return validatePayments({...normalized,cards});
+}
+
+export function cardPayments(card,data,month,{from,to}={})
+  const range=from&&to&&from<=to?[from,to]:monthRange(month);
+  const entries=occurrences(data,...range).filter(e=>e.type==='expense'&&e.category==='card'&&(e.currency||'TRY')===card.currency&&(card.paymentSource==='bank'?e.bank===card.bank:card.paymentSource==='links'&&card.linkedIds.includes(e.seriesId)));
   return {entries,paidCents:add(entries.filter(e=>e.paid).map(e=>e.amountCents)),pendingCents:add(entries.filter(e=>!e.paid).map(e=>e.amountCents))};
 }
 
 // A payment entry is never treated as the card's total debt. Only explicit monthly statements establish debt.
+export function cardStatementPayments(card,data,month){
+  const records=card.months.filter(m=>Object.hasOwn(m,'statementTotalCents')).sort((a,b)=>(a.statementDate||a.month+'-01').localeCompare(b.statementDate||b.month+'-01'));
+  const index=records.findIndex(r=>r.month===month),record=records[index];
+  if(!record?.statementDate)return {entries:[],paidCents:0,pendingCents:0};
+  const from=addDays(record.statementDate,1),next=records.slice(index+1).find(r=>r.statementDate),to=next?addDays(next.statementDate,-1):today();
+  return cardPayments(card,data,month,{from,to});
+}
 function calculateMonths(card,data,month){
-  const results=new Map();
-  for(const record of card.months.filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month))){
-    const payment=cardPayments(card,data,record.month),previous=results.get(shiftMonth(record.month,-1));
-    const paidKnown=record.paidMode==='manual'||card.paymentSource!=='none';
+  const results=new Map(),records=card.months.filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month));
+  for(let index=0;index<records.length;index++){
+    const record=records[index],previous=results.get(shiftMonth(record.month,-1));
+    let payment=cardPayments(card,data,record.month);
+    if(Object.hasOwn(record,'statementTotalCents')&&record.paidMode==='calendar'&&record.statementDate){
+      const later=records.slice(index+1).find(r=>Object.hasOwn(r,'statementTotalCents')&&r.statementDate);
+      const from=addDays(record.statementDate,1),to=later?addDays(later.statementDate,-1):today();
+      payment=cardPayments(card,data,record.month,{from,to});
+    }
+    const paidKnown=record.paidMode==='manual'||(card.paymentSource!=='none'&&!!record.statementDate);
     const paidCents=record.paidMode==='manual'?record.paidCents:payment.paidCents;
     if(Object.hasOwn(record,'statementTotalCents')){
       const openingKnown=record.openingMode==='manual'||!!previous?.known;
