@@ -81,12 +81,12 @@ export function cardStatementPayments(card,data,month,statementDateOverride=null
   return cardPayments(card,data,month,{from,to});
 }
 function calculateMonths(card,data,month){
-  const results=new Map(),records=card.months.filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month));
+  const results=new Map(),allRecords=[...card.months].sort((a,b)=>a.month.localeCompare(b.month)),records=allRecords.filter(m=>m.month<=month);
   for(let index=0;index<records.length;index++){
     const record=records[index],previous=results.get(shiftMonth(record.month,-1));
     let payment=cardPayments(card,data,record.month);
     if(Object.hasOwn(record,'statementTotalCents')&&record.paidMode==='calendar'&&record.statementDate){
-      const later=records.slice(index+1).find(r=>Object.hasOwn(r,'statementTotalCents')&&r.statementDate);
+      const later=allRecords.slice(allRecords.indexOf(record)+1).find(r=>Object.hasOwn(r,'statementTotalCents')&&r.statementDate);
       const from=addDays(record.statementDate,1),to=later?addDays(later.statementDate,-1):today();
       payment=cardPayments(card,data,record.month,{from,to});
     }
