@@ -93,7 +93,7 @@ export function cardMonth(card,data,month){
 export function debtChangeBreakdown(result){
   if(!result.known)return null;
   if(result.baselineCents==null)return null;
-  const terms=Object.hasOwn(result,'totalDebtCents')?[{kind:'statement',amountCents:result.totalDebtCents-(result.baselineCents||0)},{kind:'payment',amountCents:-result.paidCents}].filter(term=>term.amountCents!==0):Object.hasOwn(result,'statementTotalCents')?[
+  const terms=Object.hasOwn(result,'totalDebtCents')?[{kind:'statement',amountCents:result.totalDebtCents-(result.baselineCents||0)},{kind:'payment',amountCents:-result.appliedPaidCents}].filter(term=>term.amountCents!==0):Object.hasOwn(result,'statementTotalCents')?[
     {kind:'statement',amountCents:result.statementTotalCents-result.baselineCents},
     {kind:'payment',amountCents:-result.appliedPaidCents}
   ].filter(term=>term.amountCents!==0):[
