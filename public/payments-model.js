@@ -55,8 +55,12 @@ export function cardPayments(card,data,month,{from,to}={}){
 function calculateMonths(card,data,month){
   const results=new Map(),records=[...card.months].filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month));
   let previousRecorded=null;
-  for(const record of records){
-    if(Object.hasOwn(record,'totalDebtCents')){
+  for(let record of records){
+    if(Object.hasOwn(record,'totalDebtCents')||Object.hasOwn(record,'statementTotalCents')){
+      // Interim build-32/33 records (statementTotalCents) are read with the same simple rule: total debt - payment.
+      const interim=!Object.hasOwn(record,'totalDebtCents'),totalDebt=interim?record.statementTotalCents:record.totalDebtCents;
+      const paid=interim&&record.paidMode==='calendar'?cardPayments(card,data,record.month).paidCents:record.paidCents;
+      record={...record,totalDebtCents:totalDebt,paidCents:paid};
       const closingCents=Math.max(0,record.totalDebtCents-record.paidCents);
       const baselineCents=previousRecorded?.closingCents??null;
       results.set(record.month,{...record,known:true,hasRecord:true,totalCents:record.totalDebtCents,grossCents:record.totalDebtCents,paidCents:record.paidCents,appliedPaidCents:Math.min(record.paidCents,record.totalDebtCents),closingCents,creditCents:Math.max(0,record.paidCents-record.totalDebtCents),interestCents:record.interestCents,costCents:record.interestCents,spendCents:0,openingCents:baselineCents,openingKnown:baselineCents!=null,paidKnown:true,deltaCents:baselineCents==null?null:closingCents-baselineCents,baselineCents,baseline:previousRecorded?'previous':null,creditAppliedCents:0,pendingCents:0});
