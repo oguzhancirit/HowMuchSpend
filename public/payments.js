@@ -8,7 +8,7 @@ const categories=Object.entries(CATEGORIES).filter(([k,c])=>c.type==='expense'&&
 
 export function createPaymentsController({getData,getMonth,setMonth,getCurrency,setCurrency=()=>{},isDemo,money,esc,bankImage,toast,onChange,download,confirmBox}){
   let saved=emptyPayments(),storageError='',selectedId='',cardDraft=null,monthDraft=null,error='',allHistory=false,monthPicker=false;
-  try{const raw=localStorage.getItem(PAYMENT_KEY);if(raw){const parsed=JSON.parse(raw);saved=migrateLegacyPayments(parsed,getData());if(JSON.stringify(parsed)!==JSON.stringify(saved))localStorage.setItem(PAYMENT_KEY,JSON.stringify(saved));}}catch{storageError='Ödeme Takibi verisi okunamadı. Yedeğini indir veya geçerli bir takip yedeği yükle.';}
+  try{const raw=localStorage.getItem(PAYMENT_KEY);if(raw){const parsed=JSON.parse(raw);saved=migrateLegacyPayments(parsed,getData());if(JSON.stringify(parsed)!==JSON.stringify(saved)){const backupKey=PAYMENT_KEY+'.pre-migration-backup';if(!localStorage.getItem(backupKey))localStorage.setItem(backupKey,raw);localStorage.setItem(PAYMENT_KEY,JSON.stringify(saved));}}}catch{storageError='Ödeme Takibi verisi okunamadı. Yedeğini indir veya geçerli bir takip yedeği yükle.';}
   const fmt=(n,c)=>n==null?'—':money(n,c.currency),val=v=>esc(v??'');
   const sourceTag=source=>`<small class="tracking-source-tag">${val(source)}</small>`;
   const equationCaption=r=>r&&Object.hasOwn(r,'statementTotalCents')?'Ekstre toplam borcu − ödenen = kalan':'Devreden + harcama + maliyet − borca işlenen ödeme = kalan';
