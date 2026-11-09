@@ -1,9 +1,9 @@
-import {createPaymentsController} from './payments.js?v=31';
-import {createSavingsController} from './savings.js?v=31';
-import {createMotionController} from './motion.js?v=31';
-import { CURRENCIES,formatAmount,formatNumber,inCurrency,BANKS,CATEGORIES,REPEAT,blank,id,today,iso,daysInMonth,addDays,monthRange,shiftMonth,parseAmount,occurrences,totals,setPaid,editOccurrence,removeOccurrence,validateData,demoData,validDate,englishMonth } from './model.js?v=31';
-import {createPushController} from './notifications.js?v=31';
-import {dayStatus} from './calendar-status.js?v=31';
+import {createPaymentsController} from './payments.js?v=34';
+import {createSavingsController} from './savings.js?v=34';
+import {createMotionController} from './motion.js?v=34';
+import { CURRENCIES,formatAmount,formatNumber,inCurrency,BANKS,CATEGORIES,REPEAT,blank,id,today,iso,daysInMonth,addDays,monthRange,shiftMonth,parseAmount,occurrences,totals,setPaid,editOccurrence,removeOccurrence,validateData,demoData,validDate,englishMonth } from './model.js?v=34';
+import {createPushController} from './notifications.js?v=34';
+import {dayStatus} from './calendar-status.js?v=34';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const icons={pig:'<path d="M5 8c2-3 7-4 11-1l2-3v5l3 2v5l-3 1-1 4h-3l-1-3H9l-1 3H5l-1-5c-2-2-2-5 1-8ZM4 11C1 11 1 8 3 8m6-1h4"/><circle cx="16" cy="11" r=".7"/>',card:'<rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 9h20M6 14h3m3 0h2"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18m-13 4h1m3 0h1m3 0h1"/>',chart:'<path d="M5 20V10m7 10V4m7 16v-7M3 21h18"/>',list:'<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',settings:'<path d="m9 3-.7 2-2 .9-2.1-.4L2 9l1.5 1.6v2.8L2 15l2.2 3.5 2.1-.4 2 .9.7 2h6l.7-2 2-.9 2.1.4L22 15l-1.5-1.6v-2.8L22 9l-2.2-3.5-2.1.4-2-.9L15 3z"/><circle cx="12" cy="12" r="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',left:'<path d="m15 5-7 7 7 7"/>',right:'<path d="m9 5 7 7-7 7"/>',up:'<path d="M6 18 18 6M6 6h12v12"/>',down:'<path d="M18 6 6 18M6 6v12h12"/>',check:'<path d="m5 12 4 4L19 6"/>',eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',eyeoff:'<path d="m3 3 18 18M9.5 5.4A12 12 0 0 1 12 5c6.5 0 10 7 10 7a19 19 0 0 1-3 4M6 6a20 20 0 0 0-4 6s3.5 7 10 7a13 13 0 0 0 5-1M10 10a3 3 0 0 0 4 4"/>',search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',upload:'<path d="M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5"/>',phone:'<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/>',shield:'<path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6z"/><path d="m8 11 3 3 5-5"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/>',repeat:'<path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3"/>'};
 const icon=(name)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.calendar}</svg>`;

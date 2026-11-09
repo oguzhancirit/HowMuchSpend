@@ -1,4 +1,4 @@
-import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=31';
+import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=34';
 
 export const PAYMENT_KEY='howmuchspend.payments.v1';
 const MAX=1e12;
@@ -29,7 +29,12 @@ export function validatePayments(raw){
     const monthIds=new Set();
     const months=c.months.map(m=>{
       assert(object(m)&&validMonth(m.month)&&!monthIds.has(m.month),'Ay geçersiz veya tekrarlı.');monthIds.add(m.month);
+      if(Object.hasOwn(m,'totalDebtCents'))return {month:m.month,totalDebtCents:amount(m.totalDebtCents,'Toplam borç'),interestCents:amount(m.interestCents,'Toplam faiz'),paidCents:amount(m.paidCents,'Ödenen tutar')};
       assert(['manual','previous'].includes(m.openingMode)&&['calendar','manual'].includes(m.paidMode),'Aylık tutar kaynağı geçersiz.');
+      if(Object.hasOwn(m,'statementTotalCents')){
+        assert(m.statementDate==null||typeof m.statementDate==='string','Ekstre tarihi geçersiz.');
+        return {month:m.month,modelVersion:2,statementDate:m.statementDate||null,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Hatırlanan devreden borç'),statementTotalCents:amount(m.statementTotalCents,'Ekstre toplam borcu'),interestCents:amount(m.interestCents,'Faiz tutarı'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar')};
+      }
       const out={month:m.month,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Devreden borç'),spendCents:amount(m.spendCents,'Yeni harcama'),costCents:amount(m.costCents,'Faiz ve vergi'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar'),breakdown:{}};
       assert(object(m.breakdown),'Harcama dağılımı geçersiz.');
       for(const [category,n] of Object.entries(m.breakdown)){assert(Object.hasOwn(CATEGORIES,category)&&CATEGORIES[category].type==='expense'&&!['card','loan'].includes(category),'Harcama kategorisi geçersiz.');out.breakdown[category]=amount(n,'Kategori tutarı');}
@@ -41,19 +46,31 @@ export function validatePayments(raw){
   return {schemaVersion:1,cards,updatedAt:typeof raw.updatedAt==='string'?raw.updatedAt:null};
 }
 
-export function cardPayments(card,data,month){
-  const entries=occurrences(data,...monthRange(month)).filter(e=>e.type==='expense'&&e.category==='card'&&(e.currency||'TRY')===card.currency&&(card.paymentSource==='bank'?e.bank===card.bank:card.paymentSource==='links'&&card.linkedIds.includes(e.seriesId)));
+export function cardPayments(card,data,month,{from,to}={}){
+  const range=from&&to&&from<=to?[from,to]:monthRange(month);
+  const entries=occurrences(data,...range).filter(e=>e.type==='expense'&&e.category==='card'&&(e.currency||'TRY')===card.currency&&(card.paymentSource==='bank'?e.bank===card.bank:card.paymentSource==='links'&&card.linkedIds.includes(e.seriesId)));
   return {entries,paidCents:add(entries.filter(e=>e.paid).map(e=>e.amountCents)),pendingCents:add(entries.filter(e=>!e.paid).map(e=>e.amountCents))};
 }
 
-// A payment entry is never treated as the card's total debt. Only explicit monthly statements establish debt.
 function calculateMonths(card,data,month){
-  const results=new Map();
-  for(const record of card.months.filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month))){
-    const payment=cardPayments(card,data,record.month),previous=results.get(shiftMonth(record.month,-1));
-    const openingKnown=record.openingMode==='manual'||!!previous?.known;
+  const results=new Map(),records=[...card.months].filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month));
+  let previousRecorded=null;
+  for(let record of records){
+    if(Object.hasOwn(record,'totalDebtCents')||Object.hasOwn(record,'statementTotalCents')){
+      // Interim build-32/33 records (statementTotalCents) are read with the same simple rule: total debt - payment.
+      const interim=!Object.hasOwn(record,'totalDebtCents'),totalDebt=interim?record.statementTotalCents:record.totalDebtCents;
+      const paid=interim&&record.paidMode==='calendar'?cardPayments(card,data,record.month).paidCents:record.paidCents;
+      record={...record,totalDebtCents:totalDebt,paidCents:paid};
+      const closingCents=Math.max(0,record.totalDebtCents-record.paidCents);
+      const baselineCents=previousRecorded?.closingCents??null;
+      results.set(record.month,{...record,known:true,hasRecord:true,totalCents:record.totalDebtCents,grossCents:record.totalDebtCents,paidCents:record.paidCents,appliedPaidCents:Math.min(record.paidCents,record.totalDebtCents),closingCents,creditCents:Math.max(0,record.paidCents-record.totalDebtCents),interestCents:record.interestCents,costCents:record.interestCents,spendCents:0,openingCents:baselineCents,openingKnown:baselineCents!=null,paidKnown:true,deltaCents:baselineCents==null?null:closingCents-baselineCents,baselineCents,baseline:previousRecorded?'previous':null,creditAppliedCents:0,pendingCents:0});
+      previousRecorded=results.get(record.month);continue;
+    }
+    const payment=cardPayments(card,data,record.month);
     const paidKnown=record.paidMode==='manual'||card.paymentSource!=='none';
     const paidCents=record.paidMode==='manual'?record.paidCents:payment.paidCents;
+    const previous=results.get(shiftMonth(record.month,-1));
+    const openingKnown=record.openingMode==='manual'||!!previous?.known;
     const openingCents=record.openingMode==='manual'?record.openingCents:previous?.closingCents??null;
     const openingCreditCents=record.openingMode==='previous'?previous?.creditCents||0:0;
     const known=openingKnown&&paidKnown;
@@ -63,10 +80,12 @@ function calculateMonths(card,data,month){
     const closingCents=known?Math.max(0,totalCents-paidCents):null;
     const creditCents=known?Math.max(0,openingCreditCents-grossCents)+Math.max(0,paidCents-totalCents):null;
     const baseline=previous?.known?previous.closingCents:openingCents;
-    results.set(record.month,{...record,known,openingKnown,paidKnown,openingCents,openingCreditCents,grossCents,creditAppliedCents,totalCents,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,pendingCents:payment.pendingCents,deltaCents:known?closingCents-baseline:null,baselineCents:known?baseline:null,baseline:previous?.known?'previous':'opening',hasRecord:true});
+    const result={...record,known,openingKnown,paidKnown,openingCents,openingCreditCents,grossCents,creditAppliedCents,totalCents,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,pendingCents:payment.pendingCents,deltaCents:known?closingCents-baseline:null,baselineCents:known?baseline:null,baseline:previous?.known?'previous':'opening',hasRecord:true};
+    results.set(record.month,result);previousRecorded=result;
   }
   return results;
 }
+
 export function cardMonth(card,data,month){
   const results=calculateMonths(card,data,month);
   if(results.has(month))return results.get(month);
@@ -77,15 +96,19 @@ export function cardMonth(card,data,month){
 // Explain the existing calculation; never infer a bank balance or alter stored inputs.
 export function debtChangeBreakdown(result){
   if(!result.known)return null;
-  const terms=[
+  if(result.baselineCents==null)return null;
+  const terms=Object.hasOwn(result,'totalDebtCents')?[{kind:'statement',amountCents:result.totalDebtCents-(result.baselineCents||0)},{kind:'payment',amountCents:-result.appliedPaidCents}].filter(term=>term.amountCents!==0):Object.hasOwn(result,'statementTotalCents')?[
+    {kind:'statement',amountCents:result.statementTotalCents-result.baselineCents},
+    {kind:'payment',amountCents:-result.appliedPaidCents}
+  ].filter(term=>term.amountCents!==0):[
     {kind:'opening-adjustment',amountCents:result.openingCents-result.baselineCents},
     {kind:'spend',amountCents:result.spendCents},
     {kind:'cost',amountCents:result.costCents},
     {kind:'credit',amountCents:-result.creditAppliedCents},
     {kind:'payment',amountCents:-result.appliedPaidCents}
   ].filter(term=>term.amountCents!==0);
-  const deltaCents=add(terms.map(term=>term.amountCents));
-  assert(deltaCents===result.deltaCents&&result.baselineCents+deltaCents===result.closingCents,'Borç değişimi hesapla uyuşmuyor.');
+  const deltaCents=result.deltaCents??add(terms.map(term=>term.amountCents));
+  if(result.baselineCents!=null)assert(result.baselineCents+deltaCents===result.closingCents,'Borç değişimi hesapla uyuşmuyor.');
   return {baseline:result.baseline,baselineCents:result.baselineCents,terms,deltaCents,closingCents:result.closingCents};
 }
 

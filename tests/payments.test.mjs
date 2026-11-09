@@ -81,3 +81,42 @@ test('Explanation remains balanced across rising/falling debt, carry, correction
     assert.equal(b.terms.reduce((n,t)=>n+t.amountCents,0),r.deltaCents);assert.equal(b.baselineCents+b.deltaCents,r.closingCents);assert.ok(r.closingCents>=0&&r.creditCents>=0);
   }
 });
+
+
+test('New monthly records calculate remaining balance from total debt minus manual payment',()=>{
+  const c=card({paymentSource:'none',months:[
+    {month:'2026-10',totalDebtCents:3200000,interestCents:44273,paidCents:1000000},
+    {month:'2026-11',totalDebtCents:2800000,interestCents:25000,paidCents:500000}
+  ]});
+  const r=cardMonth(c,ledger([]),'2026-10'),next=cardMonth(c,ledger([]),'2026-11');
+  assert.equal(r.closingCents,2200000);
+  assert.equal(next.closingCents,2300000);
+  assert.equal(next.deltaCents,100000);
+  assert.equal(next.interestCents,25000);
+});
+test('Legacy records remain in their original format and keep their historical calculation',()=>{
+  const old=card({months:[row('2026-10',{paidMode:'manual',paidCents:500000})]});
+  const raw={schemaVersion:1,cards:[old],updatedAt:null},validated=validatePayments(raw);
+  assert.deepEqual(validated.cards[0].months[0],old.months[0]);
+  const r=cardMonth(validated.cards[0],ledger([]),'2026-10');
+  assert.equal(r.closingCents,5600000);
+  assert.equal(Object.hasOwn(validated.cards[0].months[0],'totalDebtCents'),false);
+});
+test('Mixed legacy and simplified records use the previous recorded month closing balance',()=>{
+  const c=card({months:[
+    row('2026-09',{paidMode:'manual',paidCents:500000}),
+    {month:'2026-10',totalDebtCents:4000000,interestCents:10000,paidCents:1000000},
+    row('2026-11',{openingMode:'previous',openingCents:0,paidMode:'manual',paidCents:0})
+  ]});
+  const oct=cardMonth(c,ledger([]),'2026-10'),nov=cardMonth(c,ledger([]),'2026-11');
+  assert.equal(oct.deltaCents,oct.closingCents-5600000);
+  assert.equal(nov.openingCents,oct.closingCents);
+});
+
+test('Interim statement-model records stay readable and editable as simplified records',()=>{
+  const c=card({paymentSource:'none',months:[{month:'2026-10',modelVersion:2,statementDate:null,openingMode:'manual',openingCents:0,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000}]});
+  const r=cardMonth(validate([c]).cards[0],ledger([]),'2026-10');
+  assert.equal(r.totalCents,3200000);
+  assert.equal(r.closingCents,2200000);
+  assert.equal(r.interestCents,85000);
+});
