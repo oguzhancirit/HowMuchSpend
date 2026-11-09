@@ -48,10 +48,15 @@ export function validatePayments(raw){
 
 export function migrateLegacyPayments(raw,data){
   const normalized=validatePayments(raw),cards=normalized.cards.map(card=>{
-    if(!card.months.some(m=>!Object.hasOwn(m,'statementTotalCents')))return card;
+    const needsMigration=card.months.some(m=>!Object.hasOwn(m,'statementTotalCents')||!m.statementDate);
+    if(!needsMigration)return card;
     const through=card.months.at(-1)?.month||'1900-01',calculated=calculateMonths(card,data,through);
     const months=card.months.map(record=>{
-      if(Object.hasOwn(record,'statementTotalCents'))return record;
+      if(Object.hasOwn(record,'statementTotalCents')){
+        if(record.statementDate)return record;
+        const oldPaid=record.paidMode==='calendar'?cardPayments(card,data,record.month).paidCents:record.paidCents;
+        return {...record,statementDate:null,paidMode:'manual',paidCents:oldPaid};
+      }
       const result=calculated.get(record.month);
       assert(result?.known&&Number.isSafeInteger(result.totalCents),'Eski kayıtların tamamı güvenle dönüştürülemedi. Eksik devreden veya ödeme bilgilerini tamamlamadan geçiş yapılmadı.');
       return {month:record.month,modelVersion:2,statementDate:null,openingMode:record.openingMode,openingCents:result.openingCents,statementTotalCents:result.totalCents,interestCents:record.costCents,paidMode:'manual',paidCents:result.paidCents};
