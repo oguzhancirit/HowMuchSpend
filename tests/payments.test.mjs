@@ -119,7 +119,7 @@ test('Legacy monthly records remain in their original format alongside statement
 test('Statement cut-off dates assign calendar payments only to the period after each statement',()=>{
   const make=(id,date)=>entry(id,{startDate:date,recurrence:'none',count:1,paidDates:[date]});
   const data=ledger([make('before','2026-10-16'),make('after','2026-10-17'),make('last-day','2026-11-15'),make('next-cutoff','2026-11-16')]);
-  const c=card({paymentSource:'none',months:[
+  const c=card({paymentSource:'bank',months:[
     {month:'2026-10',modelVersion:2,statementDate:'2026-10-16',openingMode:'manual',openingCents:0,statementTotalCents:1000000,interestCents:0,paidMode:'calendar',paidCents:0},
     {month:'2026-11',modelVersion:2,statementDate:'2026-11-16',openingMode:'previous',openingCents:0,statementTotalCents:1200000,interestCents:0,paidMode:'calendar',paidCents:0}
   ]});
