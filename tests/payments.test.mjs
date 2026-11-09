@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {blank,setPaid,occurrences} from '../public/model.js';
-import {validatePayments,cardMonth,cardPayments,spendingBreakdown,monthlyHistory,calendarCardSuggestions,debtChangeBreakdown} from '../public/payments-model.js';
+import {validatePayments,cardMonth,cardPayments,cardStatementPayments,migrateLegacyPayments,spendingBreakdown,monthlyHistory,calendarCardSuggestions,debtChangeBreakdown} from '../public/payments-model.js';
 
 const row=(month,fields={})=>({month,openingMode:'manual',openingCents:5000000,spendCents:1000000,costCents:100000,paidMode:'calendar',paidCents:0,breakdown:{food:600000},...fields});
 const card=(fields={})=>({id:'akbank',name:'Akbank',bank:'akbank',currency:'TRY',paymentSource:'bank',linkedIds:[],months:[row('2026-10')],...fields});
@@ -84,7 +84,7 @@ test('Explanation remains balanced across rising/falling debt, carry, correction
 
 
 test('Statement total already includes carry and interest; payment is subtracted exactly once',()=>{
-  const c=card({months:[{month:'2026-10',modelVersion:2,openingMode:'manual',openingCents:2000000,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000}]});
+  const c=card({months:[{month:'2026-10',modelVersion:2,statementDate:'2026-10-16',openingMode:'manual',openingCents:2000000,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000}]});
   const before=JSON.stringify(c),normalized=validate([c]).cards[0],r=cardMonth(normalized,blank(),'2026-10');
   assert.equal(r.totalCents,3200000);
   assert.equal(r.closingCents,2200000);
@@ -97,8 +97,8 @@ test('Statement total already includes carry and interest; payment is subtracted
 
 test('New statement months carry the previous closing only as a reference, never add it to statement total',()=>{
   const c=card({paymentSource:'none',months:[
-    {month:'2026-10',modelVersion:2,openingMode:'manual',openingCents:2000000,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000},
-    {month:'2026-11',modelVersion:2,openingMode:'previous',openingCents:0,statementTotalCents:4100000,interestCents:120000,paidMode:'manual',paidCents:500000}
+    {month:'2026-10',modelVersion:2,statementDate:'2026-10-16',openingMode:'manual',openingCents:2000000,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000},
+    {month:'2026-11',modelVersion:2,statementDate:'2026-11-16',openingMode:'previous',openingCents:0,statementTotalCents:4100000,interestCents:120000,paidMode:'manual',paidCents:500000}
   ]});
   const r=cardMonth(validate([c]).cards[0],blank(),'2026-11');
   assert.equal(r.openingCents,2200000);
@@ -108,10 +108,34 @@ test('New statement months carry the previous closing only as a reference, never
 });
 
 test('Legacy monthly records remain in their original format alongside statement-model records',()=>{
-  const legacy=row('2026-09'),modern={month:'2026-10',modelVersion:2,openingMode:'previous',openingCents:0,statementTotalCents:5000000,interestCents:90000,paidMode:'manual',paidCents:100000};
+  const legacy=row('2026-09'),modern={month:'2026-10',modelVersion:2,statementDate:'2026-10-16',openingMode:'previous',openingCents:0,statementTotalCents:5000000,interestCents:90000,paidMode:'manual',paidCents:100000};
   const c=validate([card({paymentSource:'none',months:[legacy,modern]})]).cards[0];
   assert.equal(Object.hasOwn(c.months[0],'statementTotalCents'),false);
   assert.equal(c.months[0].spendCents,1000000);
   assert.equal(c.months[1].statementTotalCents,5000000);
   assert.equal(cardMonth(c,blank(),'2026-10').closingCents,4900000);
+});
+
+test('Statement cut-off dates assign calendar payments only to the period after each statement',()=>{
+  const make=(id,date)=>entry(id,{startDate:date,recurrence:'none',count:1,paidDates:[date]});
+  const data=ledger([make('before','2026-10-16'),make('after','2026-10-17'),make('last-day','2026-11-15'),make('next-cutoff','2026-11-16')]);
+  const c=card({paymentSource:'none',months:[
+    {month:'2026-10',modelVersion:2,statementDate:'2026-10-16',openingMode:'manual',openingCents:0,statementTotalCents:1000000,interestCents:0,paidMode:'calendar',paidCents:0},
+    {month:'2026-11',modelVersion:2,statementDate:'2026-11-16',openingMode:'previous',openingCents:0,statementTotalCents:1200000,interestCents:0,paidMode:'calendar',paidCents:0}
+  ]});
+  const october=cardStatementPayments(c,data,'2026-10'),november=cardStatementPayments(c,data,'2026-11');
+  assert.deepEqual(october.entries.map(e=>e.id),['after','last-day']);
+  assert.deepEqual(november.entries.map(e=>e.id),[]);
+  assert.equal(october.paidCents,4600000);
+});
+test('One-time legacy migration preserves calculated totals and freezes historical payment values',()=>{
+  const old=card({months:[row('2026-10',{paidMode:'calendar',paidCents:0})]});
+  const before=cardMonth(old,ledger(),'2026-10'),migrated=migrateLegacyPayments({schemaVersion:1,cards:[old],updatedAt:null},ledger());
+  const record=migrated.cards[0].months[0],after=cardMonth(migrated.cards[0],ledger(),'2026-10');
+  assert.equal(record.statementTotalCents,before.totalCents);
+  assert.equal(record.interestCents,old.months[0].costCents);
+  assert.equal(record.paidMode,'manual');
+  assert.equal(record.paidCents,before.paidCents);
+  assert.equal(after.closingCents,before.closingCents);
+  assert.equal(migrateLegacyPayments(migrated,ledger()).cards[0].months[0].statementTotalCents,record.statementTotalCents);
 });
