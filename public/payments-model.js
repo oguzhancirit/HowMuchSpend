@@ -77,7 +77,7 @@ export function cardStatementPayments(card,data,month,statementDateOverride=null
   const index=records.findIndex(r=>r.month===month),record=records[index];
   const statementDate=statementDateOverride||record?.statementDate;
   if(!statementDate)return {entries:[],paidCents:0,pendingCents:0};
-  const from=addDays(statementDate,1),next=records.slice(index+1).find(r=>r.statementDate),to=next?addDays(next.statementDate,-1):today();
+  const from=addDays(statementDate,1),next=records.filter(r=>r.month>month).find(r=>r.statementDate),to=next?addDays(next.statementDate,-1):today();
   return cardPayments(card,data,month,{from,to});
 }
 function calculateMonths(card,data,month){
@@ -90,7 +90,7 @@ function calculateMonths(card,data,month){
       const from=addDays(record.statementDate,1),to=later?addDays(later.statementDate,-1):today();
       payment=cardPayments(card,data,record.month,{from,to});
     }
-    const paidKnown=record.paidMode==='manual'||(card.paymentSource!=='none'&&!!record.statementDate);
+    const paidKnown=record.paidMode==='manual'||(card.paymentSource!=='none'&&(!Object.hasOwn(record,'statementTotalCents')||!!record.statementDate));
     const paidCents=record.paidMode==='manual'?record.paidCents:payment.paidCents;
     if(Object.hasOwn(record,'statementTotalCents')){
       const openingKnown=record.openingMode==='manual'||!!previous?.known;
