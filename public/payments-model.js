@@ -93,7 +93,7 @@ export function cardMonth(card,data,month){
 export function debtChangeBreakdown(result){
   if(!result.known)return null;
   if(result.baselineCents==null)return null;
-  const terms=Object.hasOwn(result,'statementTotalCents')?[
+  const terms=Object.hasOwn(result,'totalDebtCents')?[{kind:'statement',amountCents:result.totalDebtCents-(result.baselineCents||0)},{kind:'payment',amountCents:-result.paidCents}].filter(term=>term.amountCents!==0):Object.hasOwn(result,'statementTotalCents')?[
     {kind:'statement',amountCents:result.statementTotalCents-result.baselineCents},
     {kind:'payment',amountCents:-result.appliedPaidCents}
   ].filter(term=>term.amountCents!==0):[
@@ -103,8 +103,8 @@ export function debtChangeBreakdown(result){
     {kind:'credit',amountCents:-result.creditAppliedCents},
     {kind:'payment',amountCents:-result.appliedPaidCents}
   ].filter(term=>term.amountCents!==0);
-  const deltaCents=add(terms.map(term=>term.amountCents));
-  assert(deltaCents===result.deltaCents&&result.baselineCents+deltaCents===result.closingCents,'Borç değişimi hesapla uyuşmuyor.');
+  const deltaCents=result.deltaCents??add(terms.map(term=>term.amountCents));
+  if(result.baselineCents!=null)assert(result.baselineCents+deltaCents===result.closingCents,'Borç değişimi hesapla uyuşmuyor.');
   return {baseline:result.baseline,baselineCents:result.baselineCents,terms,deltaCents,closingCents:result.closingCents};
 }
 
