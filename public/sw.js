@@ -1,4 +1,4 @@
-const CACHE='howmuchspend-shell-v32';
+const CACHE='howmuchspend-shell-v33';
 const ASSETS=['./','./boot.js?v=33','./index.html','./style.css?v=33','./app.js?v=33','./motion.js?v=33','./payments.js?v=33','./payments-model.js?v=33','./update.js?v=33','./savings.js?v=33','./savings-model.js?v=33','./model.js?v=33','./notifications.js?v=33','./calendar-status.js?v=33','./icon.svg?v=33','./manifest.webmanifest','./apple-touch-icon.png?v=33','./icon-192.png?v=33','./icon-512.png?v=33','./assets/ziraat.png','./assets/akbank.png','./assets/yapikredi.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS.map(path=>new Request(path,{cache:'reload'})))));self.skipWaiting();});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('howmuchspend-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
