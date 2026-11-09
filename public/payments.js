@@ -29,7 +29,7 @@ export function createPaymentsController({getData,getMonth,setMonth,getCurrency,
   function startMonth(){
     const c=selectedCard();if(!c||readonly())return;monthPicker=false;
     const month=getMonth(),record=c.months.find(r=>r.month===month),prev=cardMonth(c,getData(),shiftMonth(month,-1));
-    const legacy=!!record&&!Object.hasOwn(record,'statementTotalCents');
+    const legacy=!!record&&!Object.hasOwn(record,'totalDebtCents');
     monthDraft=legacy?{modelVersion:1,month,openingMode:record.openingMode,opening:number(record.openingCents),spend:number(record.spendCents),cost:number(record.costCents),paidMode:record.paidMode,paid:number(record.paidCents)}:{modelVersion:3,month,totalDebt:record?number(record.totalDebtCents):'',interest:record?number(record.interestCents):'0',paid:record?number(record.paidCents):''};
     if(legacy)for(const [key]of categories)monthDraft['category_'+key]=number(record?.breakdown[key]||0);
     cardDraft=null;error='';onChange();
