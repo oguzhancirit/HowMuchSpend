@@ -96,7 +96,7 @@ test('Statement total already includes carry and interest; payment is subtracted
 });
 
 test('New statement months carry the previous closing only as a reference, never add it to statement total',()=>{
-  const c=card({paymentSource:'none',months:[
+  const c=card({paymentSource:'bank',months:[
     {month:'2026-10',modelVersion:2,statementDate:'2026-10-16',openingMode:'manual',openingCents:2000000,statementTotalCents:3200000,interestCents:85000,paidMode:'manual',paidCents:1000000},
     {month:'2026-11',modelVersion:2,statementDate:'2026-11-16',openingMode:'previous',openingCents:0,statementTotalCents:4100000,interestCents:120000,paidMode:'manual',paidCents:500000}
   ]});
