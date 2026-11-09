@@ -65,7 +65,7 @@ export function migrateLegacyPayments(raw,data){
   return validatePayments({...normalized,cards});
 }
 
-export function cardPayments(card,data,month,{from,to}={})
+export function cardPayments(card,data,month,{from,to}={}){
   const range=from&&to&&from<=to?[from,to]:monthRange(month);
   const entries=occurrences(data,...range).filter(e=>e.type==='expense'&&e.category==='card'&&(e.currency||'TRY')===card.currency&&(card.paymentSource==='bank'?e.bank===card.bank:card.paymentSource==='links'&&card.linkedIds.includes(e.seriesId)));
   return {entries,paidCents:add(entries.filter(e=>e.paid).map(e=>e.amountCents)),pendingCents:add(entries.filter(e=>!e.paid).map(e=>e.amountCents))};
