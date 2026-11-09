@@ -1,4 +1,4 @@
-import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth,addDays,today,validDate} from './model.js?v=31';
+import {BANKS,CURRENCIES,CATEGORIES,occurrences,monthRange,shiftMonth} from './model.js?v=31';
 
 export const PAYMENT_KEY='howmuchspend.payments.v1';
 const MAX=1e12;
@@ -29,9 +29,10 @@ export function validatePayments(raw){
     const monthIds=new Set();
     const months=c.months.map(m=>{
       assert(object(m)&&validMonth(m.month)&&!monthIds.has(m.month),'Ay geçersiz veya tekrarlı.');monthIds.add(m.month);
+      if(Object.hasOwn(m,'totalDebtCents'))return {month:m.month,totalDebtCents:amount(m.totalDebtCents,'Toplam borç'),interestCents:amount(m.interestCents,'Toplam faiz'),paidCents:amount(m.paidCents,'Ödenen tutar')};
       assert(['manual','previous'].includes(m.openingMode)&&['calendar','manual'].includes(m.paidMode),'Aylık tutar kaynağı geçersiz.');
       if(Object.hasOwn(m,'statementTotalCents')){
-        assert(m.statementDate==null||validDate(m.statementDate),'Ekstre kesim tarihi geçersiz.');
+        assert(m.statementDate==null||typeof m.statementDate==='string','Ekstre tarihi geçersiz.');
         return {month:m.month,modelVersion:2,statementDate:m.statementDate||null,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Hatırlanan devreden borç'),statementTotalCents:amount(m.statementTotalCents,'Ekstre toplam borcu'),interestCents:amount(m.interestCents,'Faiz tutarı'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar')};
       }
       const out={month:m.month,openingMode:m.openingMode,openingCents:amount(m.openingCents,'Devreden borç'),spendCents:amount(m.spendCents,'Yeni harcama'),costCents:amount(m.costCents,'Faiz ve vergi'),paidMode:m.paidMode,paidCents:amount(m.paidCents,'Ödenen tutar'),breakdown:{}};
@@ -45,64 +46,26 @@ export function validatePayments(raw){
   return {schemaVersion:1,cards,updatedAt:typeof raw.updatedAt==='string'?raw.updatedAt:null};
 }
 
-export function migrateLegacyPayments(raw,data){
-  const normalized=validatePayments(raw),cards=normalized.cards.map(card=>{
-    const needsMigration=card.months.some(m=>!Object.hasOwn(m,'statementTotalCents')||!m.statementDate);
-    if(!needsMigration)return card;
-    const through=card.months.at(-1)?.month||'1900-01',calculated=calculateMonths(card,data,through);
-    const months=card.months.map(record=>{
-      if(Object.hasOwn(record,'statementTotalCents')){
-        if(record.statementDate)return record;
-        const oldPaid=record.paidMode==='calendar'?cardPayments(card,data,record.month).paidCents:record.paidCents;
-        return {...record,statementDate:null,paidMode:'manual',paidCents:oldPaid};
-      }
-      const result=calculated.get(record.month);
-      assert(result?.known&&Number.isSafeInteger(result.totalCents),'Eski kayıtların tamamı güvenle dönüştürülemedi. Eksik devreden veya ödeme bilgilerini tamamlamadan geçiş yapılmadı.');
-      return {month:record.month,modelVersion:2,statementDate:null,openingMode:record.openingMode,openingCents:result.openingCents,statementTotalCents:result.totalCents,interestCents:record.costCents,paidMode:'manual',paidCents:result.paidCents};
-    });
-    return {...card,months};
-  });
-  return validatePayments({...normalized,cards});
-}
-
 export function cardPayments(card,data,month,{from,to}={}){
   const range=from&&to&&from<=to?[from,to]:monthRange(month);
   const entries=occurrences(data,...range).filter(e=>e.type==='expense'&&e.category==='card'&&(e.currency||'TRY')===card.currency&&(card.paymentSource==='bank'?e.bank===card.bank:card.paymentSource==='links'&&card.linkedIds.includes(e.seriesId)));
   return {entries,paidCents:add(entries.filter(e=>e.paid).map(e=>e.amountCents)),pendingCents:add(entries.filter(e=>!e.paid).map(e=>e.amountCents))};
 }
 
-// A payment entry is never treated as the card's total debt. Only explicit monthly statements establish debt.
-export function cardStatementPayments(card,data,month,statementDateOverride=null){
-  const records=card.months.filter(m=>Object.hasOwn(m,'statementTotalCents')).sort((a,b)=>(a.statementDate||a.month+'-01').localeCompare(b.statementDate||b.month+'-01'));
-  const index=records.findIndex(r=>r.month===month),record=records[index];
-  const statementDate=statementDateOverride||record?.statementDate;
-  if(!statementDate)return {entries:[],paidCents:0,pendingCents:0};
-  const from=addDays(statementDate,1),next=records.filter(r=>r.month>month).find(r=>r.statementDate),to=next?addDays(next.statementDate,-1):today();
-  return cardPayments(card,data,month,{from,to});
-}
 function calculateMonths(card,data,month){
-  const results=new Map(),allRecords=[...card.months].sort((a,b)=>a.month.localeCompare(b.month)),records=allRecords.filter(m=>m.month<=month);
-  for(let index=0;index<records.length;index++){
-    const record=records[index],previous=results.get(shiftMonth(record.month,-1));
-    let payment=cardPayments(card,data,record.month);
-    if(Object.hasOwn(record,'statementTotalCents')&&record.paidMode==='calendar'&&record.statementDate){
-      const later=allRecords.slice(allRecords.indexOf(record)+1).find(r=>Object.hasOwn(r,'statementTotalCents')&&r.statementDate);
-      const from=addDays(record.statementDate,1),to=later?addDays(later.statementDate,-1):today();
-      payment=cardPayments(card,data,record.month,{from,to});
+  const results=new Map(),records=[...card.months].filter(m=>m.month<=month).sort((a,b)=>a.month.localeCompare(b.month));
+  let previousRecorded=null;
+  for(const record of records){
+    if(Object.hasOwn(record,'totalDebtCents')){
+      const closingCents=Math.max(0,record.totalDebtCents-record.paidCents);
+      const baselineCents=previousRecorded?.closingCents??null;
+      results.set(record.month,{...record,known:true,hasRecord:true,totalCents:record.totalDebtCents,grossCents:record.totalDebtCents,paidCents:record.paidCents,appliedPaidCents:Math.min(record.paidCents,record.totalDebtCents),closingCents,creditCents:Math.max(0,record.paidCents-record.totalDebtCents),interestCents:record.interestCents,costCents:record.interestCents,spendCents:0,openingCents:baselineCents,openingKnown:baselineCents!=null,paidKnown:true,deltaCents:baselineCents==null?null:closingCents-baselineCents,baselineCents,baseline:previousRecorded?'previous':null,creditAppliedCents:0,pendingCents:0});
+      previousRecorded=results.get(record.month);continue;
     }
-    const paidKnown=record.paidMode==='manual'||(card.paymentSource!=='none'&&(!Object.hasOwn(record,'statementTotalCents')||!!record.statementDate));
+    const payment=cardPayments(card,data,record.month);
+    const paidKnown=record.paidMode==='manual'||card.paymentSource!=='none';
     const paidCents=record.paidMode==='manual'?record.paidCents:payment.paidCents;
-    if(Object.hasOwn(record,'statementTotalCents')){
-      const openingKnown=record.openingMode==='manual'||!!previous?.known;
-      const openingCents=record.openingMode==='manual'?record.openingCents:previous?.closingCents??null;
-      const known=paidKnown;
-      const totalCents=known?record.statementTotalCents:null;
-      const closingCents=known?Math.max(0,totalCents-paidCents):null;
-      const creditCents=known?Math.max(0,paidCents-totalCents):null;
-      const baseline=previous?.known?previous.closingCents:openingCents;
-      results.set(record.month,{...record,modelVersion:2,known,openingKnown,paidKnown,openingCents,totalCents,statementTotalCents:record.statementTotalCents,interestCents:record.interestCents,grossCents:totalCents,costCents:record.interestCents,spendCents:0,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,creditAppliedCents:0,pendingCents:payment.pendingCents,deltaCents:known&&baseline!=null?closingCents-baseline:null,baselineCents:baseline,baseline:previous?.known?'previous':'opening',hasRecord:true});
-      continue;
-    }
+    const previous=results.get(shiftMonth(record.month,-1));
     const openingKnown=record.openingMode==='manual'||!!previous?.known;
     const openingCents=record.openingMode==='manual'?record.openingCents:previous?.closingCents??null;
     const openingCreditCents=record.openingMode==='previous'?previous?.creditCents||0:0;
@@ -113,10 +76,12 @@ function calculateMonths(card,data,month){
     const closingCents=known?Math.max(0,totalCents-paidCents):null;
     const creditCents=known?Math.max(0,openingCreditCents-grossCents)+Math.max(0,paidCents-totalCents):null;
     const baseline=previous?.known?previous.closingCents:openingCents;
-    results.set(record.month,{...record,known,openingKnown,paidKnown,openingCents,openingCreditCents,grossCents,creditAppliedCents,totalCents,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,pendingCents:payment.pendingCents,deltaCents:known?closingCents-baseline:null,baselineCents:known?baseline:null,baseline:previous?.known?'previous':'opening',hasRecord:true});
+    const result={...record,known,openingKnown,paidKnown,openingCents,openingCreditCents,grossCents,creditAppliedCents,totalCents,paidCents,appliedPaidCents:known?Math.min(paidCents,totalCents):null,closingCents,creditCents,pendingCents:payment.pendingCents,deltaCents:known?closingCents-baseline:null,baselineCents:known?baseline:null,baseline:previous?.known?'previous':'opening',hasRecord:true};
+    results.set(record.month,result);previousRecorded=result;
   }
   return results;
 }
+
 export function cardMonth(card,data,month){
   const results=calculateMonths(card,data,month);
   if(results.has(month))return results.get(month);
