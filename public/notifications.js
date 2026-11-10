@@ -1,6 +1,6 @@
 const KEY='howmuchspend.push.v1';
 // Push server used when the app is hosted on GitHub Pages (static files only). Empty = notifications are hidden there.
-export const PUSH_SERVER_ORIGIN='';
+export const PUSH_SERVER_ORIGIN='https://howmuchspend.ozicirit9.workers.dev';
 export function reminderRules(data,details=false) {
   // Only the reminder projection leaves the phone. Notes are never uploaded.
   return {schemaVersion:1,updatedAt:data.updatedAt,entries:data.entries.map(e=>({

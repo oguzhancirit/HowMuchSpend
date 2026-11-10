@@ -6,7 +6,8 @@
   "triggers": { "crons": ["*/15 * * * *"] },
   "vars": {
     "VAPID_SUBJECT": "https://oguzhancirit.github.io/HowMuchSpend/",
-    "ALLOWED_ORIGINS": "https://oguzhancirit.github.io"
+    "ALLOWED_ORIGINS": "https://oguzhancirit.github.io",
+    "VAPID_PUBLIC_KEY": "BL41dDeGCMih5N99Xrfth5RzGiU6wvXO8wLcjJPmJSuAoRxTk_sGRB8HSQzCb_6mUpMgErM5fIQTqMrWkrKzamY"
   },
   "d1_databases": [
     {

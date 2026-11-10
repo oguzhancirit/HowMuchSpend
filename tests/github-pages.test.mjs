@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-async function controller(hostname){
+async function controller(hostname,pushServer=''){
   const calls=[];
   Object.assign(globalThis,{
     location:{hostname},
@@ -11,7 +11,7 @@ async function controller(hostname){
     fetch:async(...args)=>{calls.push(args);throw new Error('network must not be used');}
   });
   const mod=await import('../public/notifications.js?host='+hostname);
-  return {push:mod.createPushController({getData:()=>({entries:[]}),canSync:()=>true,esc:v=>v,toast(){},onChange(){}}),calls};
+  return {push:mod.createPushController({getData:()=>({entries:[]}),canSync:()=>true,esc:v=>v,toast(){},onChange(){},pushServer}),calls};
 }
 
 test('GitHub Pages hides the notification panel and never calls the push server',async()=>{
@@ -31,4 +31,9 @@ test('GitHub Pages keeps the notification panel when a push server origin is con
   const configured=mod.createPushController({getData:()=>({entries:[]}),canSync:()=>true,esc:v=>v,toast(){},onChange(){},pushServer:'https://push.example.workers.dev'});
   assert.match(configured.panel(),/id="notification-panel"/);
   assert.equal(push.panel(),'');
+});
+
+test('The shipped push server origin points at the Cloudflare Worker',async()=>{
+  const mod=await import('../public/notifications.js?host=shipped');
+  assert.match(mod.PUSH_SERVER_ORIGIN,/^https:\/\/howmuchspend\.[a-z0-9-]+\.workers\.dev$/);
 });
