@@ -140,3 +140,6 @@ html[data-motion=reduced] .savings-liquid,html[data-motion=reduced] .savings-pro
 
 /* DebTracker wordmark: one name, two clear parts. */
 .brand-name{white-space:nowrap;font-weight:750;letter-spacing:-.045em}.brand-tracker{color:#c3f082}[data-theme="light"] .brand-tracker{color:#477b20}
+.summary-card{transition:transform 200ms var(--ease)}.summary-card:active{transform:scale(.985)}
+.paid-burst{position:fixed;width:0;height:0;pointer-events:none;z-index:60}.paid-burst i{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%}
+@media(prefers-reduced-motion:reduce){.summary-card{transition:none}.paid-burst{display:none}}
