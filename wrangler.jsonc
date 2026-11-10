@@ -1,0 +1,19 @@
+{
+  "name": "howmuchspend",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2025-10-01",
+  "workers_dev": true,
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "vars": {
+    "VAPID_SUBJECT": "https://oguzhancirit.github.io/HowMuchSpend/",
+    "ALLOWED_ORIGINS": "https://oguzhancirit.github.io"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "howmuchspend-push",
+      "database_id": "4f1be6a9-ab38-41f7-bf31-cebb7d4c9aa7",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}

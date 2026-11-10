@@ -1,4 +1,6 @@
 const KEY='howmuchspend.push.v1';
+// Push server used when the app is hosted on GitHub Pages (static files only). Empty = notifications are hidden there.
+export const PUSH_SERVER_ORIGIN='';
 export function reminderRules(data,details=false) {
   // Only the reminder projection leaves the phone. Notes are never uploaded.
   return {schemaVersion:1,updatedAt:data.updatedAt,entries:data.entries.map(e=>({
@@ -9,18 +11,20 @@ export function reminderRules(data,details=false) {
     overrides:Object.fromEntries(Object.entries(e.overrides).map(([date,o])=>[date,{title:details?o.title:(e.type==='income'?'Beklenen gelir':'Ödeme'),amountCents:details?o.amountCents:1,currency:o.currency||e.currency||'TRY',category:e.type==='income'?'otherincome':'other',bank:details?o.bank:'',notes:''}]))
   }))};
 }
-export function createPushController({getData,canSync,esc,toast,onChange}) {
+export function createPushController({getData,canSync,esc,toast,onChange,pushServer=PUSH_SERVER_ORIGIN}) {
   let saved={active:false,token:'',leadDays:0,details:false},config=null,busy=false,error='',syncedAt=null,server=null,queue=Promise.resolve(),retryTimer;
   try{const old=JSON.parse(localStorage.getItem(KEY)||'{}');saved={...saved,...old};saved.leadDays=0;}catch{}
   const standalone=()=>window.matchMedia?.('(display-mode: standalone)').matches||navigator.standalone;
   const ios=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Mac/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
   const supported=()=>!!window.Notification&&!!window.PushManager&&!!navigator.serviceWorker&&window.isSecureContext;
   const persist=()=>localStorage.setItem(KEY,JSON.stringify(saved));
-  // GitHub Pages serves static files only: no push server exists there, so reminders are switched off.
-  const noServer=typeof location!=='undefined'&&/\.github\.io$/i.test(location.hostname);
+  // GitHub Pages serves static files only. Reminders need PUSH_SERVER_ORIGIN there; without it the panel is hidden.
+  const onPages=typeof location!=='undefined'&&/\.github\.io$/i.test(location.hostname);
+  const noServer=onPages&&!pushServer;
+  const apiBase=onPages?String(pushServer).replace(/\/$/,'')+'/api/push/':'./api/push/';
   const change=()=>onChange();
   async function api(path,method='GET',body) {
-    const response=await fetch('./api/push/'+path,{method,cache:'no-store',headers:{...(saved.token?{Authorization:'Bearer '+saved.token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
+    const response=await fetch(apiBase+path,{method,cache:'no-store',headers:{...(saved.token?{Authorization:'Bearer '+saved.token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
     const value=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(value.error||'Bildirim sunucusuna ulaşılamadı.');return value;
   }

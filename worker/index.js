@@ -11,6 +11,18 @@ export function dueReminders(rules,_legacyLeadDays,now=Date.now()){
   return Model.occurrences(rules,date,date).filter(e=>!e.paid).map(e=>({...e,slot,deliveryKey:e.key+'#'+slot}));
 }
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+// The app can be served from another origin (GitHub Pages) that talks to this push server.
+const DEFAULT_ALLOWED_ORIGINS=['https://oguzhancirit.github.io'];
+const allowedOrigins=env=>env.ALLOWED_ORIGINS?String(env.ALLOWED_ORIGINS).split(',').map(v=>v.trim()).filter(Boolean):DEFAULT_ALLOWED_ORIGINS;
+const originAllowed=(request,url,env)=>{const origin=request.headers.get('Origin');return !!origin&&(origin===url.origin||allowedOrigins(env).includes(origin));};
+function withCors(request,env,response){
+  const url=new URL(request.url),origin=request.headers.get('Origin');
+  if(!url.pathname.startsWith('/api/push/')||!origin||origin===url.origin||!allowedOrigins(env).includes(origin))return response;
+  const headers=new Headers(response.headers);
+  headers.set('Access-Control-Allow-Origin',origin);headers.append('Vary','Origin');
+  headers.set('Access-Control-Allow-Headers','Authorization, Content-Type');headers.set('Access-Control-Allow-Methods','GET, PUT, POST, DELETE, OPTIONS');headers.set('Access-Control-Max-Age','600');
+  return new Response(response.body,{status:response.status,headers});
+}
 const tokenOf=r=>r.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
 const ready=env=>!!env.DB&&!!env.VAPID_PRIVATE_JWK&&!!env.VAPID_PUBLIC_KEY&&!!env.VAPID_SUBJECT;
 async function status(env,id){const device=await env.DB.prepare('SELECT enabled, updated_at FROM push_devices WHERE id = ?').bind(id).first();const heartbeat=await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first();return {exists:!!device,enabled:!!device?.enabled,syncedAt:device?.updated_at||null,schedulerStale:!heartbeat||Date.now()-Number(heartbeat.value)>18*3600000};}
@@ -82,9 +94,11 @@ export async function dispatch(env,now=Date.now()){
   await env.DB.prepare('DELETE FROM push_deliveries WHERE sent_at < ?').bind(now-90*86400000).run();
   return {ok:failed===0,sent,failed};
 }
-export async function fetchHandler(request,env){
+export async function fetchHandler(request,env){return withCors(request,env,await route(request,env));}
+async function route(request,env){
   const url=new URL(request.url);
   if(url.pathname.startsWith('/api/push/')){
+    if(request.method==='OPTIONS')return originAllowed(request,url,env)?new Response(null,{status:204}):json({error:'Geçersiz kaynak.'},403);
     if(url.pathname==='/api/push/config'&&request.method==='GET'){const heartbeat=ready(env)?await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first():null;return json({ready:ready(env),schedulerReady:!!heartbeat&&Date.now()-Number(heartbeat.value)<18*3600000,publicKey:env.VAPID_PUBLIC_KEY||null});}
     if(!ready(env))return json({error:'Bildirim sunucusu hazır değil.'},503);
     if(url.pathname==='/api/push/dispatch'&&request.method==='POST'){
@@ -105,7 +119,7 @@ export async function fetchHandler(request,env){
       const resultsOut=[];for(const row of results){const response=await testDevice(env,row.id);resultsOut.push({status:response.status,...await response.json()});}
       return json({results:resultsOut},resultsOut.every(r=>r.ok)?200:502);
     }
-    if(request.method!=='GET'&&request.headers.get('Origin')!==url.origin)return json({error:'Geçersiz kaynak.'},403);
+    if(request.method!=='GET'&&!originAllowed(request,url,env))return json({error:'Geçersiz kaynak.'},403);
     const token=tokenOf(request);if(!token)return json({error:'Cihaz kimliği eksik.'},401);const id=await Push.hash(token);
     if(url.pathname==='/api/push/device'){
       if(request.method==='GET')return json(await status(env,id));

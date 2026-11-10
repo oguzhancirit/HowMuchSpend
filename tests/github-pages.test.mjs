@@ -24,3 +24,11 @@ test('Hosts with the push server keep the notification panel',async()=>{
   const {push}=await controller('howmuchspend.ozicirit9.chatgpt.site');
   assert.match(push.panel(),/id="notification-panel"/);
 });
+
+test('GitHub Pages keeps the notification panel when a push server origin is configured',async()=>{
+  const {push}=await controller('oguzhancirit.github.io');
+  const mod=await import('../public/notifications.js?host=configured');
+  const configured=mod.createPushController({getData:()=>({entries:[]}),canSync:()=>true,esc:v=>v,toast(){},onChange(){},pushServer:'https://push.example.workers.dev'});
+  assert.match(configured.panel(),/id="notification-panel"/);
+  assert.equal(push.panel(),'');
+});
