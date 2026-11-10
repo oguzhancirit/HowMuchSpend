@@ -30,6 +30,7 @@ const missing=env=>['DB','VAPID_PRIVATE_JWK','VAPID_PUBLIC_KEY'].filter(k=>!env[
 const ready=env=>missing(env).length===0;
 async function status(env,id){const device=await env.DB.prepare('SELECT enabled, updated_at FROM push_devices WHERE id = ?').bind(id).first();const heartbeat=await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first();return {exists:!!device,enabled:!!device?.enabled,syncedAt:device?.updated_at||null,schedulerStale:!heartbeat||Date.now()-Number(heartbeat.value)>18*3600000};}
 const BODY_LIMIT=2*1024*1024;
+export const MAX_DEVICES=50;
 const requestError=(message,status)=>Object.assign(new Error(message),{status});
 async function bodyOf(request){
   if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type')||''))throw requestError('JSON gerekli.',415);
@@ -135,6 +136,9 @@ async function route(request,env){
           for(const e of rules.entries){e.notes='';for(const o of Object.values(e.overrides))o.notes='';if(!value.details){e.title=e.type==='income'?'Beklenen gelir':'Ödeme';e.amountCents=1;e.bank='';for(const o of Object.values(e.overrides)){o.title=e.title;o.amountCents=1;o.bank='';}}}
           value.leadDays=0;
           const subscription=await Push.validateSubscription(value.subscription),now=Date.now();
+          // Registration is unauthenticated by design (the device token is its own credential), so cap the table:
+          // otherwise a script could fill D1 or push the owner's device out of the dispatch window.
+          if(!await env.DB.prepare('SELECT 1 AS x FROM push_devices WHERE id = ?').bind(id).first()){const count=await env.DB.prepare('SELECT COUNT(*) AS n FROM push_devices').first();if(Number(count?.n)>=MAX_DEVICES)return json({error:'Cihaz sınırına ulaşıldı.'},429);}
           await env.DB.prepare(`INSERT INTO push_devices (id, subscription, rules, lead_days, details, enabled, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?) ON CONFLICT(id) DO UPDATE SET subscription = excluded.subscription, rules = excluded.rules, lead_days = excluded.lead_days, details = excluded.details, enabled = 1, updated_at = excluded.updated_at`).bind(id,JSON.stringify(subscription),JSON.stringify(rules),value.leadDays,value.details?1:0,now).run();
           return json(await status(env,id));
         }catch(e){return json({error:e.message||'Hatırlatma kaydedilemedi.'},[400,413,415].includes(e.status)?e.status:400);}

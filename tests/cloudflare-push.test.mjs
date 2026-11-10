@@ -41,3 +41,15 @@ test('config lists missing settings by name and does not require VAPID_SUBJECT',
   const ok=await mod.fetchHandler(new Request('https://x.workers.dev/api/push/config'),{DB:{prepare:()=>({first:async()=>null})},VAPID_PUBLIC_KEY:'pub',VAPID_PRIVATE_JWK:'{}'});
   assert.equal((await ok.json()).ready,true);
 });
+
+test('device registration is capped so unauthenticated clients cannot fill the database',async()=>{
+  const {MAX_DEVICES}=await import('../worker/index.js');
+  assert.ok(MAX_DEVICES>0&&MAX_DEVICES<=100);
+});
+test('index.html ships a strict CSP that only allows the push server for connections',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  const csp=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1]||'';
+  assert.match(csp,/script-src 'self'(;|$)/);assert.doesNotMatch(csp,/unsafe-eval|script-src[^;]*unsafe-inline/);
+  assert.match(csp,/connect-src 'self' https:\/\/howmuchspend\.[a-z0-9-]+\.workers\.dev/);assert.match(csp,/object-src 'none'/);
+});
