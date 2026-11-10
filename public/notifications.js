@@ -16,6 +16,8 @@ export function createPushController({getData,canSync,esc,toast,onChange}) {
   const ios=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Mac/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
   const supported=()=>!!window.Notification&&!!window.PushManager&&!!navigator.serviceWorker&&window.isSecureContext;
   const persist=()=>localStorage.setItem(KEY,JSON.stringify(saved));
+  // GitHub Pages serves static files only: no push server exists there, so reminders are switched off.
+  const noServer=typeof location!=='undefined'&&/\.github\.io$/i.test(location.hostname);
   const change=()=>onChange();
   async function api(path,method='GET',body) {
     const response=await fetch('./api/push/'+path,{method,cache:'no-store',headers:{...(saved.token?{Authorization:'Bearer '+saved.token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
@@ -26,12 +28,14 @@ export function createPushController({getData,canSync,esc,toast,onChange}) {
   const publicBytes=key=>Uint8Array.from(atob(key.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(key.length/4)*4,'=')),c=>c.charCodeAt(0));
   async function loadConfig(){config=await api('config');return config;}
   function panel(){
+    if(noServer)return '';
     const installed=ios()&&!standalone(),blocked=supported()&&Notification.permission==='denied';
     const status=busy?'İşleniyor…':saved.active?(error?'Eşitleme gerekli':'Açık'):'Kapalı';
     const hint=installed?'Bildirimleri açmak için ana ekrandaki DebTracker simgesinden gir.':blocked?'iPhone Ayarlar → Bildirimler → DebTracker bölümünden izin ver.':!supported()?'Web Push için iOS 16.4 veya üstü ve ana ekran uygulaması gerekir.':config?.schedulerReady?'Ödeme günü 08:30, 12:00 ve 17:00’de hatırlatır. Tamamlanan kayıtlar tekrar hatırlatılmaz.':'Bildirim izni ve test gönderimi kullanılabilir. Otomatik hatırlatma zamanlayıcısı henüz etkin değil.';
     return `<section class="panel settings-panel" id="notification-panel"><div class="section-head"><h2>Bildirimler</h2><span class="notification-status ${saved.active&&!error?'enabled':''}" role="status">${status}</span></div><p>${hint}</p><div class="push-options"><div class="field">Ödeme günü<strong>08:30 · 12:00 · 17:00</strong></div><label class="push-privacy"><input type="checkbox" id="push-details" ${saved.details?'checked':''} ${busy?'disabled':''}> Bildirimde kayıt adını ve tutarı göster</label></div><small class="push-note">Hatırlatma tarihleri sunucuda saklanır. Notların ve asıl kayıtların bu cihazda kalır.</small>${error?`<p class="push-error" role="alert">${esc(error)}</p>`:''}${error&&!saved.active?'<button class="secondary" data-action="push-retry">Tekrar kontrol et</button>':''}${saved.active?`<div class="push-actions"><button class="secondary" data-action="push-test" ${busy?'disabled':''}>Test bildirimi</button><button class="secondary" data-action="push-disable" ${busy?'disabled':''}>Kapat</button>${error?'<button class="secondary" data-action="push-retry">Tekrar eşitle</button>':''}</div>`:`<button class="primary" data-action="push-enable" ${busy||installed||blocked||!supported()||!config?.ready?'disabled':''}>Bildirimleri aç</button>`}${syncedAt?`<small class="push-note">Son eşitleme: ${esc(new Date(syncedAt).toLocaleString('tr-TR'))}</small>`:''}${server?.schedulerStale&&config?.schedulerReady?'<p class="push-error">Otomatik gönderim denetimi gecikti. Test bildirimi çalışabilir; zamanlayıcı kontrol edilmeli.</p>':''}</section>`;
   }
   function sync(manual=false){
+    if(noServer)return Promise.resolve();
     clearTimeout(retryTimer);
     if(!saved.active||!canSync())return Promise.resolve();
     queue=queue.catch(()=>{}).then(async()=>{
@@ -62,7 +66,7 @@ export function createPushController({getData,canSync,esc,toast,onChange}) {
   async function disable(){if(busy)return;busy=true;change();await queue.catch(()=>{});try{await api('device','DELETE');saved.active=false;persist();clearTimeout(retryTimer);try{await(await(await registration()).pushManager.getSubscription())?.unsubscribe()}catch{}error='';syncedAt=null;toast('Bildirimler kapatıldı.');}catch(e){error='Kapatılamadı: '+e.message;}finally{busy=false;change();}}
   async function test(){if(busy)return;busy=true;change();try{await sync();if(error)throw new Error(error);await api('test','POST');toast('Test bildirimi gönderim servisine iletildi.');}catch(e){error=e.message;}finally{busy=false;change();}}
   async function settings(values){Object.assign(saved,values,{leadDays:0});try{persist();await sync()}catch(e){error=e.message;}change();}
-  async function refresh(){if(!supported())return;try{await loadConfig();if(!config.ready)error='Bildirim sunucusu henüz hazır değil.';if(saved.active){server=await api('device');if(server.exists&&!server.enabled)throw new Error('Bildirim aboneliğin sona ermiş. Kapatıp yeniden aç.');await sync();}}catch(e){error=e.message;}change();}
+  async function refresh(){if(noServer||!supported())return;try{await loadConfig();if(!config.ready)error='Bildirim sunucusu henüz hazır değil.';if(saved.active){server=await api('device');if(server.exists&&!server.enabled)throw new Error('Bildirim aboneliğin sona ermiş. Kapatıp yeniden aç.');await sync();}}catch(e){error=e.message;}change();}
   window.addEventListener('online',()=>refresh());
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
   const warning=()=>saved.active&&error?'<p class="push-sync-warning" role="status">Hatırlatmalar henüz eşitlenemedi. Ayarlar → Bildirimler bölümünden kontrol et.</p>':'';
