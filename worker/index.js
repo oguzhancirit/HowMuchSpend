@@ -24,7 +24,10 @@ function withCors(request,env,response){
   return new Response(response.body,{status:response.status,headers});
 }
 const tokenOf=r=>r.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
-const ready=env=>!!env.DB&&!!env.VAPID_PRIVATE_JWK&&!!env.VAPID_PUBLIC_KEY&&!!env.VAPID_SUBJECT;
+const DEFAULT_SUBJECT='https://oguzhancirit.github.io/HowMuchSpend/';
+const withDefaults=env=>env.VAPID_SUBJECT?env:{...env,VAPID_SUBJECT:DEFAULT_SUBJECT};
+const missing=env=>['DB','VAPID_PRIVATE_JWK','VAPID_PUBLIC_KEY'].filter(k=>!env[k]);
+const ready=env=>missing(env).length===0;
 async function status(env,id){const device=await env.DB.prepare('SELECT enabled, updated_at FROM push_devices WHERE id = ?').bind(id).first();const heartbeat=await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first();return {exists:!!device,enabled:!!device?.enabled,syncedAt:device?.updated_at||null,schedulerStale:!heartbeat||Date.now()-Number(heartbeat.value)>18*3600000};}
 const BODY_LIMIT=2*1024*1024;
 const requestError=(message,status)=>Object.assign(new Error(message),{status});
@@ -94,12 +97,12 @@ export async function dispatch(env,now=Date.now()){
   await env.DB.prepare('DELETE FROM push_deliveries WHERE sent_at < ?').bind(now-90*86400000).run();
   return {ok:failed===0,sent,failed};
 }
-export async function fetchHandler(request,env){return withCors(request,env,await route(request,env));}
+export async function fetchHandler(request,rawEnv){const env=withDefaults(rawEnv);return withCors(request,env,await route(request,env));}
 async function route(request,env){
   const url=new URL(request.url);
   if(url.pathname.startsWith('/api/push/')){
     if(request.method==='OPTIONS')return originAllowed(request,url,env)?new Response(null,{status:204}):json({error:'Geçersiz kaynak.'},403);
-    if(url.pathname==='/api/push/config'&&request.method==='GET'){const heartbeat=ready(env)?await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first():null;return json({ready:ready(env),schedulerReady:!!heartbeat&&Date.now()-Number(heartbeat.value)<18*3600000,publicKey:env.VAPID_PUBLIC_KEY||null});}
+    if(url.pathname==='/api/push/config'&&request.method==='GET'){const heartbeat=ready(env)?await env.DB.prepare("SELECT value FROM push_state WHERE key = 'last_dispatch'").first():null;return json({ready:ready(env),schedulerReady:!!heartbeat&&Date.now()-Number(heartbeat.value)<18*3600000,publicKey:env.VAPID_PUBLIC_KEY||null,missing:missing(env)});}
     if(!ready(env))return json({error:'Bildirim sunucusu hazır değil.'},503);
     if(url.pathname==='/api/push/dispatch'&&request.method==='POST'){
       const bearer=request.headers.get('Authorization')?.replace(/^Bearer /,'');
@@ -159,4 +162,4 @@ function secureResponse(response){
   headers.set('X-Content-Type-Options','nosniff');
   return response;
 }
-export default {async fetch(request,env){try{return secureResponse(await fetchHandler(request,env))}catch{return secureResponse(json({error:'Sunucu geçici olarak yanıt veremiyor.'},500));}},async scheduled(controller,env,ctx){ctx.waitUntil(dispatch(env));}};
+export default {async fetch(request,env){try{return secureResponse(await fetchHandler(request,env))}catch{return secureResponse(json({error:'Sunucu geçici olarak yanıt veremiyor.'},500));}},async scheduled(controller,env,ctx){ctx.waitUntil(dispatch(withDefaults(env)));}};

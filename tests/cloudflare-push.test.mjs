@@ -31,3 +31,13 @@ test('Config is readable cross-origin and the Worker exposes a cron handler',asy
   assert.equal(res.status,200);assert.equal(res.headers.get('Access-Control-Allow-Origin'),PAGES);
   assert.equal(typeof worker.scheduled,'function');
 });
+
+test('config lists missing settings by name and does not require VAPID_SUBJECT',async()=>{
+  const mod=await import('../worker/index.js');
+  const res=await mod.fetchHandler(new Request('https://x.workers.dev/api/push/config'),{DB:{prepare:()=>({first:async()=>null})},VAPID_PUBLIC_KEY:'pub'});
+  const body=await res.json();
+  assert.equal(body.ready,false);
+  assert.deepEqual(body.missing,['VAPID_PRIVATE_JWK']);
+  const ok=await mod.fetchHandler(new Request('https://x.workers.dev/api/push/config'),{DB:{prepare:()=>({first:async()=>null})},VAPID_PUBLIC_KEY:'pub',VAPID_PRIVATE_JWK:'{}'});
+  assert.equal((await ok.json()).ready,true);
+});
