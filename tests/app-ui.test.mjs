@@ -8,7 +8,6 @@ import * as Recovery from '../public/recovery-model.js';
 import * as Payments from '../public/payments-model.js';
 import {dayStatus} from '../public/calendar-status.js';
 import {createMotionController} from '../public/motion.js';
-const createCountController=()=>({afterRender(){},stop(){}});
 
 const read=name=>fs.readFileSync(new URL('../public/'+name,import.meta.url),'utf8');
 const source=read('notifications.js').replace(/^export /gm,'')+'\nconst createRecoveryController=(()=>{'+read('recovery.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createRecoveryController;})();\nconst createPaymentsController=(()=>{'+read('payments.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createPaymentsController;})();\nconst createSavingsController=(()=>{'+read('savings.js').replace(/^import .*\n/gm,'').replace(/^export /gm,'')+';return createSavingsController;})();\n'+read('app.js').replace(/^import .*\n/gm,'');
@@ -19,7 +18,7 @@ function fixture({savingsState}={}){
   const ledger={schemaVersion:1,updatedAt:null,entries:[entry('card','expense','TRY',45900000,'Akbank eski kayıt','card'),entry('salary','income','TRY',10000000,'Maaş','salary'),entry('euro','income','EUR',100000,'Euro gelir','salary')]};
   const storage=new Map([['howmuchspend.data.v1',JSON.stringify(ledger)]]),original=storage.get('howmuchspend.data.v1');
   if(savingsState)storage.set('howmuchspend.savings.v1',JSON.stringify(savingsState));
-  const context=vm.createContext({...Model,...Recovery,...Payments,...Savings,dayStatus,createMotionController,createCountController,URL,location:{hostname:'howmuchspend.ozicirit9.chatgpt.site',href:'https://howmuchspend.ozicirit9.chatgpt.site'},document:{querySelector:node,querySelectorAll:()=>[],getElementById:id=>nodes.get('#'+id),documentElement:{dataset:{}},addEventListener:(event,fn)=>(listeners[event]??=[]).push(fn)},window:{innerWidth:428,addEventListener(){},scrollTo(){}},navigator:{},Intl,Date,console,crypto:globalThis.crypto,structuredClone,setTimeout:()=>1,clearTimeout(){},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)}});
+  const context=vm.createContext({...Model,...Recovery,...Payments,...Savings,dayStatus,createMotionController,URL,location:{hostname:'howmuchspend.ozicirit9.chatgpt.site',href:'https://howmuchspend.ozicirit9.chatgpt.site'},document:{querySelector:node,querySelectorAll:()=>[],getElementById:id=>nodes.get('#'+id),documentElement:{dataset:{}},addEventListener:(event,fn)=>(listeners[event]??=[]).push(fn)},window:{innerWidth:428,addEventListener(){},scrollTo(){}},navigator:{},Intl,Date,console,crypto:globalThis.crypto,structuredClone,setTimeout:()=>1,clearTimeout(){},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)}});
   vm.runInContext(source,context);
   const run=code=>vm.runInContext(code,context);
   const click=dataset=>{const button={dataset,hasAttribute:()=>false};for(const fn of listeners.click||[])fn({target:{closest:selector=>selector==='button,a'?button:null}});};
